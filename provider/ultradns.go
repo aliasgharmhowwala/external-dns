@@ -46,7 +46,7 @@ type UltraDNSProvider struct {
 type UltraDNSChanges struct {
         Action string
 
-        ResourceRecordSet udnssdk.RRSet
+        ResourceRecordSetULtraDNS udnssdk.RRSet
 }
 type UltraDNSZones struct {
         Zones []UltraDNSZone `json:"zones"`
@@ -160,7 +160,7 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
 
                 change := &UltraDNSChanges{
                         Action: action,
-                        ResourceRecordSet: udnssdk.RRSet{
+                        ResourceRecordSetULtraDNS: udnssdk.RRSet{
                                 RRType: e.RecordType,
                                 OwnerName: e.DNSName,
                                 RData: e.Targets,
@@ -172,7 +172,7 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
         return changes
 }
 
-func seperateChangesByZone(zones string, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
+func seperateChangeByZone(zones string, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
         log.Infof("In seperate changes by zone function")
         change := make(map[string][]*UltraDNSChanges)
         return change
