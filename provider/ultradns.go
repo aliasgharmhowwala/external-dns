@@ -18,19 +18,22 @@ import (
         "fmt"
         "os"
         "strconv"
-		"strings"
-		"net/http"
-		"net/url"
-		"time"
-		
+                "strings"
+                "net/http"
+                "net/url"
+                "time"
+
         log "github.com/sirupsen/logrus"
-        "github.com/aliasgharmhowwala/ultradns-sdk-go/udnssdk"
+        udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
         "sigs.k8s.io/external-dns/endpoint"
         "sigs.k8s.io/external-dns/plan"
 )
 
 const (
-        ultradnsTTL    = 86400
+                ultradnsTTL    = 86400
+                ultradnsCreate = "CREATE"
+                ultradnsDelete = "DELETE"
+                ultradnsUpdate = "UPDATE"
 )
 
 type UltraDNSProvider struct {
@@ -43,22 +46,22 @@ type UltraDNSProvider struct {
 type UltraDNSChanges struct {
         Action string
 
-        ResourceRecordSet udnssdk.RRSets
+        ResourceRecordSet udnssdk.RRSet
 }
 type UltraDNSZones struct {
-	Zones []UltraDNSZone `json:"zones"`
+        Zones []UltraDNSZone `json:"zones"`
 }
 type UltraDNSZone struct {
-	Properties struct {
-		Name string `json:"name"`
-		AccountName string `json:"accountName`
-		Type string `json:"type"`
-		DnssecStatus string `json:"dnssecStatus"`
-		Status string `json:"status"`
-		Owner string `json:"owner"`
-		ResourceRecordCount int `json:"resourceRecordCount"`
-		LastModifiedDateTime time.Time `json:"lastModifiedDateTime"`
-	} `json:"properties"`
+        Properties struct {
+                Name string `json:"name"`
+                AccountName string `json:"accountName`
+                Type string `json:"type"`
+                DnssecStatus string `json:"dnssecStatus"`
+                Status string `json:"status"`
+                Owner string `json:"owner"`
+                ResourceRecordCount int `json:"resourceRecordCount"`
+                LastModifiedDateTime time.Time `json:"lastModifiedDateTime"`
+        } `json:"properties"`
 }
 
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
@@ -73,13 +76,12 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
                 return nil, fmt.Errorf("no password found")
         }
 
-		BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
-		if !ok {
-			return nil, fmt.Errorf("no baseurl found")
-		}
+                BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
+                if !ok {
+                        return nil, fmt.Errorf("no baseurl found")
+                }
 
-        client := udnssdk.NewClient(Username, Password, BaseURL)
-        client.SetUserAgent(fmt.Sprintf("ExternalDNS/%s", client.UserAgent))
+        client,err := udnssdk.NewClient(Username, Password, BaseURL)
 
         provider := &UltraDNSProvider{
                 client:       *client,
@@ -91,147 +93,92 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 }
 
 
-func (p *UltraDNSProvider) fetchZones() {
-	p.client.get('/zones/','')
+// Zones returns list of hosted zones
+func (p *UltraDNSProvider) Zones(ctx context.Context) ([]http.Request, error) {
+        log.Infof ("Under Zones function")
+        zones, err := p.fetchZones(ctx)
+        //if err != nil {
+        //      return nil, err
+        //}
+
+        return zones, nil
 }
 
-func (p *UltraDNSProvider) FindZone (string Zone)(*http.Response, error){
-	resp,err := p.client.get('/zones/'+Zone )
+func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
+        log.Infof("Under Records function")
 
-	if err != nil {
-		log.Errorf("Could not get the requested zone please check the string")
-		return resp, err
-	}
 
-	return resp,err
+        var endpoints []*endpoint.Endpoint
+        return endpoints, nil
 }
-// ApplyChanges applies a given set of changes in a given zone.
+
+func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string) ([]http.Request, error) {
+        log.Infof("Under fetchRecords function")
+        var req []http.Request
+
+        //if err != nil {
+        //      return nil, err
+        //}
+
+        return req, nil
+}
+
+func (p *UltraDNSProvider) fetchZones(ctx context.Context) ([]http.Request, error) {
+
+        log.Infof("Under fetch zones function")
+
+        var req []http.Request
+        return req, nil
+}
+
+func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
+        log.Infof("In submitChanges function")
+        return nil
+}
+
 func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	// zoneNameIDMapper := zoneIDName{}
-	// zones, err := p.fetchZones()
+        log.Infof("In ApplyChanges function")
 
-	// if err != nil {
-	// 	log.Warnf("No zones to fetch endpoints from!")
-	// 	return nil
-	// }
+        combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
 
-	// for _, z := range zones.Zones {
-	// 	zoneNameIDMapper[z.Zone] = z.Zone
-	// }
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsUpdate, changes.UpdateNew)...)
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsDelete, changes.Delete)...)
 
-	// _, cf := p.createRecords(zoneNameIDMapper, changes.Create)
-	// if !p.dryRun {
-	// 	if len(cf) > 0 {
-	// 		log.Warnf("Not all desired endpoints could be created, retrying next iteration")
-	// 		for _, f := range cf {
-	// 			log.Warnf("Not created was DNSName: '%s' RecordType: '%s'", f.DNSName, f.RecordType)
-	// 		}
-	// 	}
-	// }
-
-	_,cf := p.createZone (endpoint.DNSName,changes.Create)
-
-	if !p.dryRun {
-		if len(cf) > 0 {
-			log.Warnf("The desired endpoint could be created, retrying next iteration")
-			for _, f := range cf {
-				log.Warnf("Not created was DNSName: '%s' RecordType: '%s'", f.DNSName, f.RecordType)
-			}
-		}
-	}
-
-	// _, df := p.deleteRecords(zoneNameIDMapper, changes.Delete)
-	// if !p.dryRun {
-	// 	if len(df) > 0 {
-	// 		log.Warnf("Not all endpoints that require deletion could be deleted, retrying next iteration")
-	// 		for _, f := range df {
-	// 			log.Warnf("Not deleted was DNSName: '%s' RecordType: '%s'", f.DNSName, f.RecordType)
-	// 		}
-	// 	}
-	// }
-
-	// _, uf := p.updateNewRecords(zoneNameIDMapper, changes.UpdateNew)
-	// if !p.dryRun {
-	// 	if len(uf) > 0 {
-	// 		log.Warnf("Not all endpoints that require updating could be updated, retrying next iteration")
-	// 		for _, f := range uf {
-	// 			log.Warnf("Not updated was DNSName: '%s' RecordType: '%s'", f.DNSName, f.RecordType)
-	// 		}
-	// 	}
-	// }
-
-	// for _, uold := range changes.UpdateOld {
-	// 	if !p.dryRun {
-	// 		log.Debugf("UpdateOld (ignored) for DNSName: '%s' RecordType: '%s'", uold.DNSName, uold.RecordType)
-	// 	}
-	// }
-
-	return nil
+        return p.submitChanges(ctx, combinedChanges)
 }
 
-// func (p *UltraDNSProvider) fetchZones() (zones UltraDNSZones, err error) {
-// 	log.Debugf("Trying to fetch zones from UltraDNS")
-// 	resp, err := p.request("GET", "config-dns/v2/zones?showAll=true&types=primary%2Csecondary", nil)
-// 	if err != nil {
-// 		log.Errorf("Failed to fetch zones from Akamai")
-// 		return zones, err
-// 	}
+func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
+        log.Infof("In newUltraDNSChanges function action string '%s' ",action)
+        changes := make([]*UltraDNSChanges, 0, len(endpoints))
+        ttl := ultradnsTTL
+        for _, e := range endpoints {
 
-// 	err = json.NewDecoder(resp.Body).Decode(&zones)
-// 	if err != nil {
-// 		log.Errorf("Could not decode json response from Akamai on zone request")
-// 		return zones, err
-// 	}
-// 	defer resp.Body.Close()
+                if e.RecordTTL.IsConfigured() {
+                        ttl = int(e.RecordTTL)
+                }
 
-// 	filteredZones := akamaiZones{}
-// 	for _, zone := range zones.Zones {
-// 		if !p.zoneIDFilter.Match(zone.ContractID) {
-// 			log.Debugf("Skipping zone: '%s' with ZoneID: '%s', it does not match against ZoneID filters", zone.Zone, zone.ContractID)
-// 			continue
-// 		}
-// 		filteredZones.Zones = append(filteredZones.Zones, akamaiZone{ContractID: zone.ContractID, Zone: zone.Zone})
-// 		log.Debugf("Fetched zone: '%s' (ZoneID: %s)", zone.Zone, zone.ContractID)
-// 	}
-// 	lenFilteredZones := len(filteredZones.Zones)
-// 	if lenFilteredZones == 0 {
-// 		log.Warnf("No zones could be fetched")
-// 	} else {
-// 		log.Debugf("Fetched '%d' zones from Akamai", lenFilteredZones)
-// 	}
+                change := &UltraDNSChanges{
+                        Action: action,
+                        ResourceRecordSet: udnssdk.RRSet{
+                                RRType: e.RecordType,
+                                OwnerName: e.DNSName,
+                                RData: e.Targets,
+                                TTL:  ttl,
+                        },
+                }
+                changes = append(changes, change)
+        }
+        return changes
+}
 
-// 	return filteredZones, nil
-// }
+func seperateChangesByZone(zones string, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
+        log.Infof("In seperate changes by zone function")
+        change := make(map[string][]*UltraDNSChanges)
+        return change
+}
 
-func (p *UltraDNSProvider) createZone(string Zone, endpoints []*endpoint.Endpoint) (created []*endpoint.Endpoint, failed []*endpoint.Endpoint) {
-	for _, endpoint := range endpoints {
-
-		if !p.domainFilter.Match(endpoint.DNSName) {
-			log.Debugf("Skipping creation at UltraDNS of endpoint DNSName: '%s' RecordType: '%s', it does not match against Domain filters", endpoint.DNSName, endpoint.RecordType)
-			continue
-		}
-		zoneNameresponse, _ := FindZone(endpoint.DNSName)
-		log.Debugf("The response which got generated "+zoneNameresponse)
-		// if zoneName, _ := FindZone(endpoint.DNSName); zoneName == "" {
-		// 	akamaiRecord := p.newAkamaiRecord(endpoint.DNSName, endpoint.RecordType, endpoint.Targets...)
-		// 	body, _ := json.MarshalIndent(akamaiRecord, "", "  ")
-
-		// 	log.Infof("Create new Endpoint at Akamai FastDNS - Zone: '%s', DNSName: '%s', RecordType: '%s', Targets: '%+v'", zoneName, endpoint.DNSName, endpoint.RecordType, endpoint.Targets)
-
-		// 	if p.dryRun {
-		// 		continue
-		// 	}
-		// 	_, err := p.request("POST", "config-dns/v2/zones/"+zoneName+"/names/"+endpoint.DNSName+"/types/"+endpoint.RecordType, bytes.NewReader(body))
-		// 	if err != nil {
-		// 		log.Errorf("Failed to create Akamai endpoint DNSName: '%s' RecordType: '%s' for zone: '%s'", endpoint.DNSName, endpoint.RecordType, zoneName)
-		// 		failed = append(failed, endpoint)
-		// 		continue
-		// 	}
-		// 	created = append(created, endpoint)
-		// } else {
-		// 	log.Warnf("No matching zone for endpoint addition DNSName: '%s' RecordType: '%s'", endpoint.DNSName, endpoint.RecordType)
-		// 	failed = append(failed, endpoint)
-		// }
-	}
-	return created, failed
+func (p *UltraDNSProvider) getRecordID(ctx context.Context, zone string, record udnssdk.RRSet) (recordID int, err error) {
+        log.Infof("In seperate changes by zone function")
+        return 0, fmt.Errorf("no record was found")
 }
