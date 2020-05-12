@@ -17,11 +17,8 @@ import (
         "context"
         "fmt"
         "os"
-        "strconv"
-                "strings"
-                "net/http"
-                "net/url"
-                "time"
+        "net/http"
+        "time"
 
         log "github.com/sirupsen/logrus"
         udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -81,7 +78,12 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
                         return nil, fmt.Errorf("no baseurl found")
                 }
 
-        client,err := udnssdk.NewClient(Username, Password, BaseURL)
+        client, err := udnssdk.NewClient(Username, Password, BaseURL)
+        if err != nil {
+
+         return nil, fmt.Errorf("Connection cannot be established")
+        }
+
 
         provider := &UltraDNSProvider{
                 client:       *client,
@@ -97,9 +99,9 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 func (p *UltraDNSProvider) Zones(ctx context.Context) ([]http.Request, error) {
         log.Infof ("Under Zones function")
         zones, err := p.fetchZones(ctx)
-        //if err != nil {
-        //      return nil, err
-        //}
+        if err != nil {
+              return nil, err
+        }
 
         return zones, nil
 }
