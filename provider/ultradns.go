@@ -63,6 +63,7 @@ type UltraDNSZone struct {
 
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
 func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
+	log.Infof ("Under provider function")
         Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
         if !ok {
                 return nil, fmt.Errorf("no username found")
