@@ -107,7 +107,7 @@ func (p *UltraDNSProvider) Zones(ctx context.Context) ([]http.Request, error) {
         return zones, nil
 }
 
-func (p *UltraDNSProvider) ecords(ctx context.Context) ([]*endpoint.Endpoint, error) {
+func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
         log.Infof("Under Records function")
 
 
