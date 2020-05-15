@@ -19,8 +19,6 @@ import (
         "os"
         "net/http"
         "time"
-        "strconv"
-	"strings"
 
         log "github.com/sirupsen/logrus"
         udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -66,14 +64,10 @@ type UltraDNSZone struct {
         } `json:"properties"`
 }
 
-type UltraDNSZoneKey struct {
-        Zone string 
-        AccountName string
-}
 
 
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
-func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool, accountName string) (*UltraDNSProvider, error) {
+func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
 	log.Infof ("Under provider function")
         Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
         if !ok {
@@ -89,8 +83,8 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool, accoun
         if !ok {
                 return nil, fmt.Errorf("no baseurl found")
         }
-
-        if accountName == "" {
+	AccountName, ok := os.LookupEnv("ULTRADNS_ACCOUNTNAME")
+        if !ok {
                 return nil, fmt.Errorf("Please provide valid accountname")
         }
 
@@ -106,7 +100,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool, accoun
                 client:       *client,
                 domainFilter: domainFilter,
                 DryRun:       dryRun,
-                AccountName:  accountName,
+                AccountName:  AccountName,
         }
 
         
@@ -115,11 +109,12 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool, accoun
 
 
 // Zones returns list of hosted zones
-func (p *UltraDNSProvider) Zones(ctx context.Context) ([]UltraDNSZone, error) {
+func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
         log.Infof ("Under Zones function")
-        zoneKey := &UltraDNSZoneKey{
-                Zone: endpoint.DNSName
-                AccountName: p.AccountName
+	zonename := ""
+        zoneKey := &udnssdk.ZoneKey{
+                Zone: zonename,
+                AccountName: p.AccountName,
         }
         zones, err := p.fetchZones(ctx,zoneKey)
         if err != nil {
@@ -138,7 +133,9 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
         log.Infof("zones : %v",zones)
 
-	// for _, zone := range zones {
+	for _, zone := range zones {
+		log.Infof("zones : %v",zone)
+	}
 	// 	records, err := p.fetchRecords(ctx, zone.Domain)
 	// 	if err != nil {
 	// 		return nil, err
@@ -176,7 +173,7 @@ func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string) ([]h
 
 
 
-func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey UltraDNSZoneKey) ([]UltraDNSZone, error) {
+func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.ZoneKey) ([]udnssdk.Zone, error) {
         log.Infof("Under fetch zones function")
                                 
         // Select will list the zone rrsets, paginating through all available results
@@ -184,13 +181,14 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey UltraDNSZoneK
         maxerrs := 5
         waittime := 5 * time.Second
 
-        zones := []UltraDNSZone{}
+        zones := []udnssdk.Zone{}
+	
         errcnt := 0
         offset := 0
         limit := 1000
 
         for {
-                reqZones, ri, res, err := udnssdk.SelectWithOffset(zoneKey, offset, limit)
+                reqZones, ri, res, err := p.client.Zone.SelectWithOffset(zoneKey, offset, limit)
                 if err != nil {
                         if res != nil && res.StatusCode >= 500 {
                                 errcnt = errcnt + 1
@@ -204,13 +202,13 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey UltraDNSZoneK
 
                 log.Printf("ResultInfo: %+v\n", ri)
                 for _, zone := range reqZones {
-                        if p.domainFilter != "" {
+                        
+			if p.domainFilter.IsConfigured() {
                                 p.domainFilter.Match(zone.Properties.Name)
                                 zones = append(zones, zone)
-                        }
-                        else{
-                                zones = append(zones, zone)
-                        } 
+                        } else {
+				 zones = append(zones, zone)
+			}
                 }
                 if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
                         return zones, nil
