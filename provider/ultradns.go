@@ -19,6 +19,8 @@ import (
         "os"
         "net/http"
         "time"
+        "strconv"
+	"strings"
 
         log "github.com/sirupsen/logrus"
         udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -38,6 +40,7 @@ type UltraDNSProvider struct {
 
         domainFilter endpoint.DomainFilter
         DryRun       bool
+        AccountName string
 }
 
 type UltraDNSChanges struct {
@@ -48,7 +51,9 @@ type UltraDNSChanges struct {
 type UltraDNSZones struct {
         Zones []UltraDNSZone `json:"zones"`
 }
+
 type UltraDNSZone struct {
+
         Properties struct {
                 Name string `json:"name"`
                 AccountName string `json:"accountName`
@@ -61,8 +66,14 @@ type UltraDNSZone struct {
         } `json:"properties"`
 }
 
+type UltraDNSZoneKey struct {
+        Zone string 
+        AccountName string
+}
+
+
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
-func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
+func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool, accountName string) (*UltraDNSProvider, error) {
 	log.Infof ("Under provider function")
         Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
         if !ok {
@@ -74,10 +85,14 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
                 return nil, fmt.Errorf("no password found")
         }
 
-                BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
-                if !ok {
-                        return nil, fmt.Errorf("no baseurl found")
-                }
+        BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
+        if !ok {
+                return nil, fmt.Errorf("no baseurl found")
+        }
+
+        if accountName == "" {
+                return nil, fmt.Errorf("Please provide valid accountname")
+        }
 
         client, err := udnssdk.NewClient(Username, Password, BaseURL)
         if err != nil {
@@ -86,20 +101,27 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
         }
 
 
+
         provider := &UltraDNSProvider{
                 client:       *client,
                 domainFilter: domainFilter,
                 DryRun:       dryRun,
+                AccountName:  accountName,
         }
 
+        
         return provider, nil
 }
 
 
 // Zones returns list of hosted zones
-func (p *UltraDNSProvider) Zones(ctx context.Context) ([]http.Request, error) {
+func (p *UltraDNSProvider) Zones(ctx context.Context) ([]UltraDNSZone, error) {
         log.Infof ("Under Zones function")
-        zones, err := p.fetchZones(ctx)
+        zoneKey := &UltraDNSZoneKey{
+                Zone: endpoint.DNSName
+                AccountName: p.AccountName
+        }
+        zones, err := p.fetchZones(ctx,zoneKey)
         if err != nil {
               return nil, err
         }
@@ -109,10 +131,36 @@ func (p *UltraDNSProvider) Zones(ctx context.Context) ([]http.Request, error) {
 
 func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
         log.Infof("Under Records function")
+	zones, err := p.Zones(ctx)
+	if err != nil {
+		return nil, err
+	}
 
+        log.Infof("zones : %v",zones)
 
+	// for _, zone := range zones {
+	// 	records, err := p.fetchRecords(ctx, zone.Domain)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
+
+	// 	for _, r := range records {
+	// 		if supportedRecordType(r.Type) {
+	// 			name := fmt.Sprintf("%s.%s", r.Name, zone.Domain)
+
+	// 			// root name is identified by the empty string and should be
+	// 			// translated to zone name for the endpoint entry.
+	// 			if r.Name == "" {
+	// 				name = zone.Domain
+	// 			}
+
+	// 			endPointTTL := endpoint.NewEndpointWithTTL(name, r.Type, endpoint.TTL(r.TTL), r.Data)
+	// 			endpoints = append(endpoints, endPointTTL)
+	// 		}
+	// 	}
+        // }
         var endpoints []*endpoint.Endpoint
-        return endpoints, nil
+	return endpoints, nil
 }
 
 func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string) ([]http.Request, error) {
@@ -126,12 +174,50 @@ func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string) ([]h
         return req, nil
 }
 
-func (p *UltraDNSProvider) fetchZones(ctx context.Context) ([]http.Request, error) {
 
+
+func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey UltraDNSZoneKey) ([]UltraDNSZone, error) {
         log.Infof("Under fetch zones function")
+                                
+        // Select will list the zone rrsets, paginating through all available results
+        // TODO: Sane Configuration for timeouts / retries
+        maxerrs := 5
+        waittime := 5 * time.Second
 
-        var req []http.Request
-        return req, nil
+        zones := []UltraDNSZone{}
+        errcnt := 0
+        offset := 0
+        limit := 1000
+
+        for {
+                reqZones, ri, res, err := udnssdk.SelectWithOffset(zoneKey, offset, limit)
+                if err != nil {
+                        if res != nil && res.StatusCode >= 500 {
+                                errcnt = errcnt + 1
+                                if errcnt < maxerrs {
+                                        time.Sleep(waittime)
+                                        continue
+                                }
+                        }
+                        return zones, err
+                }
+
+                log.Printf("ResultInfo: %+v\n", ri)
+                for _, zone := range reqZones {
+                        if p.domainFilter != "" {
+                                p.domainFilter.Match(zone.Properties.Name)
+                                zones = append(zones, zone)
+                        }
+                        else{
+                                zones = append(zones, zone)
+                        } 
+                }
+                if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
+                        return zones, nil
+                }
+                offset = ri.ReturnedCount + ri.Offset
+                continue
+        }
 }
 
 func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
