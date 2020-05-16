@@ -135,40 +135,70 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
 	for _, zone := range zones {
 		log.Infof("zones : %v",zone)
-	}
-	// 	records, err := p.fetchRecords(ctx, zone.Domain)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+                rrsetKey := udnssdk.RRSetKey{
+                        Zone: zone.Properties.Name
+                        Type: string('')
+                        Name: string('')
+                }
+		records, err := p.fetchRecords(ctx, zone.Properties.Name)
+		if err != nil {
+			return nil, err
+		}
 
-	// 	for _, r := range records {
-	// 		if supportedRecordType(r.Type) {
-	// 			name := fmt.Sprintf("%s.%s", r.Name, zone.Domain)
+		for _, r := range records {
+			if supportedRecordType(r.RRType) {
+				name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
 
-	// 			// root name is identified by the empty string and should be
-	// 			// translated to zone name for the endpoint entry.
-	// 			if r.Name == "" {
-	// 				name = zone.Domain
-	// 			}
+				// root name is identified by the empty string and should be
+				// translated to zone name for the endpoint entry.
+				if r.OwnerName == "" {
+					name = zone.Properties.Name
+				}
 
-	// 			endPointTTL := endpoint.NewEndpointWithTTL(name, r.Type, endpoint.TTL(r.TTL), r.Data)
-	// 			endpoints = append(endpoints, endPointTTL)
-	// 		}
-	// 	}
-        // }
+				endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL), r.RData)
+				endpoints = append(endpoints, endPointTTL)
+			}
+		}
+        }
         var endpoints []*endpoint.Endpoint
 	return endpoints, nil
 }
 
-func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string) ([]http.Request, error) {
+func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string, k udnssdk.RRSetKey) ([]udnssdk.RRSet[], error) {
         log.Infof("Under fetchRecords function")
-        var req []http.Request
 
-        //if err != nil {
-        //      return nil, err
-        //}
+        // TODO: Sane Configuration for timeouts / retries
+	maxerrs := 5
+	waittime := 5 * time.Second
 
-        return req, nil
+	rrsets := []RRSet{}
+	errcnt := 0
+        offset := 0
+        limit  := 1000
+
+	for {
+		reqRrsets, ri, res, err := s.SelectWithOffsetWithLimit(k, offset, limit)
+		if err != nil {
+			if res != nil && res.StatusCode >= 500 {
+				errcnt = errcnt + 1
+				if errcnt < maxerrs {
+					time.Sleep(waittime)
+					continue
+				}
+			}
+			return rrsets, err
+		}
+
+		log.Printf("ResultInfo: %+v\n", ri)
+		for _, rrset := range reqRrsets {
+			rrsets = append(rrsets, rrset)
+		}
+		if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
+			return rrsets, nil
+		}
+		offset = ri.ReturnedCount + ri.Offset
+		continue
+	}
 }
 
 
@@ -194,7 +224,7 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.Zone
                                 errcnt = errcnt + 1
                                 if errcnt < maxerrs {
                                         time.Sleep(waittime)
-                                        continue
+                                        continue      
                                 }
                         }
                         return zones, err
@@ -220,6 +250,44 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.Zone
 
 func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
         log.Infof("In submitChanges function")
+        if len(changes) == 0 {
+		log.Infof("All records are already up to date")
+		return nil
+	}
+
+	zones, err := p.Zones(ctx)
+	if err != nil {
+		return err
+	}
+
+	zoneChanges := seperateChangeByZone(zones, changes)
+
+	for zoneName, changes := range zoneChanges {
+		for _, change := range changes {
+
+			log.WithFields(log.Fields{
+				"record": change.ResourceRecordSet.OwnerName,
+				"type":   change.ResourceRecordSet.RRType,
+				"ttl":    change.ResourceRecordSet.TTL,
+				"action": change.Action,
+				"zone":   zoneName,
+			}).Info("Changing record.")
+
+			switch change.Action {
+                        case vultrCreate:
+                                rrsetKey := udnssdk.RRSetKey{
+                                        Zone: zoneName
+                                        Type: change.ResourceRecordSet.RRType
+                                        Name: change.ResourceRecordSet.OwnerName
+                                }
+				err = p.client.RRSets.Create(rrsetKey, change.ResourceRecordSet)
+				if err != nil {
+					return err
+				}
+			}
+		}
+	}
+
         return nil
 }
 
@@ -259,9 +327,25 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
         return changes
 }
 
-func seperateChangeByZone(zones string, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
+func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
         log.Infof("In seperate changes by zone function")
         change := make(map[string][]*UltraDNSChanges)
+	zoneNameID := zoneIDName{}
+
+	for _, z := range zones {
+		zoneNameID.Add(z.Properties.Name, z.Properties.Name)
+		change[z.Properties.Name] = []*UltraDNSChanges{}
+	}
+
+	for _, c := range changes {
+		zone, _ := zoneNameID.FindZone(c.ResourceRecordSet.OwnerName)
+		if zone == "" {
+			log.Debugf("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSet.OwnerName)
+			continue
+		}
+		change[zone] = append(change[zone], c)
+
+	}
         return change
 }
 
