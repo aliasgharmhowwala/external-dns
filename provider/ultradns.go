@@ -126,29 +126,30 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
                         Type: rrsetType,
                         Name: ownerName,
                 }
-		if zone.Properties.ResourceRecordCount !=0 {
-		records, err := p.fetchRecords(ctx, zone.Properties.Name, rrsetKey)
-		if err != nil {
-			return nil, err
-		}
+                
+                if zone.Properties.ResourceRecordCount !=0 {
+		        records, err := p.fetchRecords(ctx, zone.Properties.Name, rrsetKey)
+                        if err != nil {
+                                return nil, err
+                        }
 
-		for _, r := range records {
-				log.Infof("owner name %s",r.OwnerName)
-				name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
+                        for _, r := range records {
+                                        log.Infof("owner name %s",r.OwnerName)
+                                        name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
 
-				// root name is identified by the empty string and should be
-				// translated to zone name for the endpoint entry.
-				if r.OwnerName == "" {
-					name = zone.Properties.Name
-				}
+                                        // root name is identified by the empty string and should be
+                                        // translated to zone name for the endpoint entry.
+                                        if r.OwnerName == "" {
+                                                name = zone.Properties.Name
+                                        }
 
-				endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL),r.RData...)
-				log.Infof("endpoinngggg %v",endPointTTL)
-				endpoints = append(endpoints, endPointTTL)
-		}
-        }
+                                        endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL),r.RData...)
+                                        log.Infof("endpoint with TTL %v",endPointTTL)
+                                        endpoints = append(endpoints, endPointTTL)
+                        }
+                }
 
-     }
+       }
 	log.Infof("endpoints %v",endpoints)
 	return endpoints, nil
 }
@@ -264,7 +265,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 			}).Info("Changing record.")
 
 			switch change.Action {
-                        case vultrCreate:
+                        case ultradnsCreate:
                                 rrsetKey := udnssdk.RRSetKey{
                                         Zone: zoneName,
                                         Type: change.ResourceRecordSetUltraDNS.RRType,
@@ -286,7 +287,7 @@ func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
         log.Infof("In ApplyChanges function")
 
         combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
-
+        log.Infof("value of changes %v,%v,%v",changes.Create,changes.UpdateNew,changes.Delete)
         combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
         combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsUpdate, changes.UpdateNew)...)
         combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsDelete, changes.Delete)...)
