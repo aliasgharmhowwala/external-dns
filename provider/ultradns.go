@@ -135,7 +135,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
                         for _, r := range records {
                                         log.Infof("owner name %s",r.OwnerName)
-                                        name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
+                                        name := fmt.Sprintf("%s%s", r.OwnerName, zone.Properties.Name)
 
                                         // root name is identified by the empty string and should be
                                         // translated to zone name for the endpoint entry.
