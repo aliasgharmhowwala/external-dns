@@ -250,7 +250,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 	if err != nil {
 		return err
 	}
-
+	log.Infof("Change Printin submitChanges by zone %+v\n%+v ",changes,zones)
 	zoneChanges := seperateChangeByZone(zones, changes)
 
 	for zoneName, changes := range zoneChanges {
@@ -285,6 +285,10 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 
 func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
         log.Infof("In ApplyChanges function")
+        changes.Create = []*endpoint.Endpoint{
+                {DNSName: "kubernetes.ultradns.provider.test.com.", RecordType: "A", Targets: endpoint.Targets{"192.168.0.104"}},
+                {DNSName: "ttl.kubernetes.ultradns.provider.test.com.", RecordType: "TXT", Targets: endpoint.Targets{"192.168.0.104"}, RecordTTL: 100},
+        }
 
         combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
         log.Infof("value of changes %v,%v,%v",changes.Create,changes.UpdateNew,changes.Delete)
@@ -325,16 +329,18 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
         log.Infof("In seperate changes by zone function")
         change := make(map[string][]*UltraDNSChanges)
 	zoneNameID := zoneIDName{}
-
+	log.Infof("zones Printin seperate changes by zones %+v ",zones)
 	for _, z := range zones {
 		zoneNameID.Add(z.Properties.Name, z.Properties.Name)
 		change[z.Properties.Name] = []*UltraDNSChanges{}
 	}
+        log.Infof("Change Printin seperate changes by zone %+v ",change)
 
 	for _, c := range changes {
+		log.Infof("owner Name: %s",c.ResourceRecordSetUltraDNS.OwnerName)
 		zone, _ := zoneNameID.FindZone(c.ResourceRecordSetUltraDNS.OwnerName)
 		if zone == "" {
-			log.Debugf("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSetUltraDNS.OwnerName)
+			log.Infof("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSetUltraDNS.OwnerName)
 			continue
 		}
 		change[zone] = append(change[zone], c)
