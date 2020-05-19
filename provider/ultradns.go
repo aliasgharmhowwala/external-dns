@@ -262,7 +262,13 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				"ttl":    change.ResourceRecordSetUltraDNS.TTL,
 				"action": change.Action,
 				"zone":   zoneName,
-			}).Info("Changing record.")
+                        }).Info("Changing record.")
+                        
+                        rrsetKey := udnssdk.RRSetKey{
+                                Zone: zoneName,
+                                Type: change.ResourceRecordSetUltraDNS.RRType,
+                                Name: change.ResourceRecordSetUltraDNS.OwnerName,
+                        }
 
 			switch change.Action {
                         case ultradnsCreate:
@@ -275,6 +281,36 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				_ = res
 				if err != nil {
 					return err
+                                }      
+
+                        case ultradnsDelete:
+
+				rrset, err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSet)
+				if err != nil {
+					return err
+				}
+
+				err = p.client.RRSets.Delete(rrsetKey)
+				if err != nil {
+					return err
+                                }
+                                
+			case ultradnsUpdate:
+				rrset, err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSet)
+				if err != nil {
+					return err
+				}
+
+				record := &udnssdk.RRSet{
+					RRType:     change.ResourceRecordSet.RRType,
+					OwnerName:     change.ResourceRecordSet.OwnerName,
+					RData:     change.ResourceRecordSet.RData,
+					TTL:      change.ResourceRecordSet.TTL,
+				}
+
+				err = p.client.RRSets.Update(rrsetKey, record)
+				if err != nil {
+					return err
 				}
 			}
 		}
@@ -285,11 +321,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 
 func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
         log.Infof("In ApplyChanges function")
-        changes.Create = []*endpoint.Endpoint{
-                {DNSName: "kubernetes.ultradns.provider.test.com.", RecordType: "A", Targets: endpoint.Targets{"192.168.0.104"}},
-                {DNSName: "ttl.kubernetes.ultradns.provider.test.com.", RecordType: "TXT", Targets: endpoint.Targets{"192.168.0.104"}, RecordTTL: 100},
-        }
-
+        
         combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
         log.Infof("value of changes %v,%v,%v",changes.Create,changes.UpdateNew,changes.Delete)
         combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
@@ -349,7 +381,20 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
         return change
 }
 
-func (p *UltraDNSProvider) getRecordID(ctx context.Context, zone string, record udnssdk.RRSet) (recordID int, err error) {
-        log.Infof("In seperate changes by zone function")
-        return 0, fmt.Errorf("no record was found")
+func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey, rrsetRecord udnssdk.RRSet) (udnssdk.RRSet, err error) {
+        log.Infof("In get Specific Record by zone function")
+        rrsets, ri, res, err = p.client.RRSets.Select(rrsetKey)
+
+	for _, r := range rrsets {
+		strippedName := strings.TrimSuffix(rrsetRecord.OwnerName, "."+zone)
+		if rrsetRecord.OwnerName == rrsetKey.Zone {
+			strippedName = ""
+		}
+
+		if r.OwnerName == strippedName && r.RRType == rrsetRecord.RRType {
+			return r, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no record was found")
 }
