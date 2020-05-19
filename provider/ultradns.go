@@ -18,7 +18,6 @@ import (
 	"fmt"
 	_ "net/http"
 	"os"
-	"strings"
 	_ "strings"
 	"time"
 
@@ -278,7 +277,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 
 			case ultradnsDelete:
-				rrset, err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
+				err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
 				if err != nil {
 					return err
 				}
@@ -289,7 +288,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 
 			case ultradnsUpdate:
-				rrset, err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
+				err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
 				if err != nil {
 					return err
 				}
@@ -374,20 +373,16 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 	return change
 }
 
-func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey, rrsetRecord udnssdk.RRSet) (rrset udnssdk.RRSet, err error) {
+func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey, rrsetRecord udnssdk.RRSet) (err error) {
 	log.Infof("In get Specific Record by zone function")
 	rrsets, err = p.client.RRSets.Select(rrsetKey)
 
 	for _, r := range rrsets {
-		strippedName := strings.TrimSuffix(rrsetRecord.OwnerName, "."+zone)
-		if rrsetRecord.OwnerName == rrsetKey.Zone {
-			strippedName = ""
-		}
 
-		if r.OwnerName == strippedName && r.RRType == rrsetRecord.RRType {
-			return r, nil
+		if r.OwnerName == rrsetRecord.OwnerName && r.RRType == rrsetRecord.RRType {
+			return nil
 		}
 	}
 
-	return nil, fmt.Errorf("no record was found")
+	return fmt.Errorf("no record was found")
 }
