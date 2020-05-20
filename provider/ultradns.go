@@ -250,7 +250,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 	for zoneName, changes := range zoneChanges {
 		for _, change := range changes {
 
-			recordName := strings.TrimSuffix(change.ResourceRecordSetUltraDNS.OwnerName+".","."+zone.Properties.Name)
+			recordName := strings.TrimSuffix(change.ResourceRecordSetUltraDNS.OwnerName+".","."+zoneName)
 			log.WithFields(log.Fields{
 				"record": recordName,
 				"type":   change.ResourceRecordSetUltraDNS.RRType,
