@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -137,7 +138,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 						name = zone.Properties.Name
 					}
 
-					endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL), r.RData...)
+					endPointTTL := endpoint.NewEndpointWithTTL(name+"."+zone.Properties.Name, r.RRType, endpoint.TTL(r.TTL), r.RData...)
 					log.Infof("endpoint with TTL %v", endPointTTL)
 					endpoints = append(endpoints, endPointTTL)
 				}
@@ -249,8 +250,9 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 	for zoneName, changes := range zoneChanges {
 		for _, change := range changes {
 
+			recordName := strings.TrimSuffix(change.ResourceRecordSetUltraDNS.OwnerName+".","."+zone.Properties.Name)
 			log.WithFields(log.Fields{
-				"record": change.ResourceRecordSetUltraDNS.OwnerName,
+				"record": recordName,
 				"type":   change.ResourceRecordSetUltraDNS.RRType,
 				"ttl":    change.ResourceRecordSetUltraDNS.TTL,
 				"action": change.Action,
@@ -260,16 +262,11 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 			rrsetKey := udnssdk.RRSetKey{
 				Zone: zoneName,
 				Type: change.ResourceRecordSetUltraDNS.RRType,
-				Name: change.ResourceRecordSetUltraDNS.OwnerName,
+				Name: recordName,
 			}
 
 			switch change.Action {
 			case ultradnsCreate:
-				rrsetKey := udnssdk.RRSetKey{
-					Zone: zoneName,
-					Type: change.ResourceRecordSetUltraDNS.RRType,
-					Name: change.ResourceRecordSetUltraDNS.OwnerName,
-				}
 				res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
 				_ = res
 				if err != nil {
@@ -295,7 +292,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 
 				record := udnssdk.RRSet{
 					RRType:    change.ResourceRecordSetUltraDNS.RRType,
-					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+					OwnerName: recordName,
 					RData:     change.ResourceRecordSetUltraDNS.RData,
 					TTL:       change.ResourceRecordSetUltraDNS.TTL,
 				}
@@ -335,13 +332,12 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
 		}
 
 		// Adding suffix dot to the record name
-		recordName := fmt.Sprintf("%s.", e.DNSName)
 
 		change := &UltraDNSChanges{
 			Action: action,
 			ResourceRecordSetUltraDNS: udnssdk.RRSet{
 				RRType:    e.RecordType,
-				OwnerName: recordName,
+				OwnerName: e.DNSName,
 				RData:     e.Targets,
 				TTL:       ttl,
 			},
