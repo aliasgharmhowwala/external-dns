@@ -131,7 +131,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 				recordTypeArray := strings.Fields(r.RRType)
 				if supportedRecordType(recordTypeArray[0]) {
 					log.Infof("owner name %s", r.OwnerName)
-					name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
+					name := fmt.Sprintf("%s", r.OwnerName)
 
 					// root name is identified by the empty string and should be
 					// translated to zone name for the endpoint entry.
@@ -139,7 +139,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 						name = zone.Properties.Name
 					}
 
-					endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL), r.RData...)
+					endPointTTL := endpoint.NewEndpointWithTTL(name, recordTypeArray[0], endpoint.TTL(r.TTL), r.RData...)
 					log.Infof("endpoint with TTL %v", endPointTTL)
 					endpoints = append(endpoints, endPointTTL)
 				}
