@@ -17,6 +17,7 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -127,7 +128,8 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 			}
 
 			for _, r := range records {
-				if supportedRecordType(r.RRType) {
+				recordTypeArray := strings.Fields(r.RRType)
+				if supportedRecordType(recordTypeArray[0]) {
 					log.Infof("owner name %s", r.OwnerName)
 					name := fmt.Sprintf("%s.%s", r.OwnerName, zone.Properties.Name)
 
