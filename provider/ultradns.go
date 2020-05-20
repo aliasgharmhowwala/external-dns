@@ -16,9 +16,7 @@ package provider
 import (
 	"context"
 	"fmt"
-	_ "net/http"
 	"os"
-	_ "strings"
 	"time"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -130,7 +128,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 
 			for _, r := range records {
 				log.Infof("owner name %s", r.OwnerName)
-				name := fmt.Sprintf("%s%s", r.OwnerName, zone.Properties.Name)
+				name := fmt.Sprintf("%s", r.OwnerName)
 
 				// root name is identified by the empty string and should be
 				// translated to zone name for the endpoint entry.
@@ -282,7 +280,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 					return err
 				}
 
-				err = p.client.RRSets.Delete(rrsetKey)
+				_,err = p.client.RRSets.Delete(rrsetKey)
 				if err != nil {
 					return err
 				}
@@ -293,14 +291,14 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 					return err
 				}
 
-				record := &udnssdk.RRSet{
-					RRType:    change.ResourceRecordSet.RRType,
-					OwnerName: change.ResourceRecordSet.OwnerName,
-					RData:     change.ResourceRecordSet.RData,
-					TTL:       change.ResourceRecordSet.TTL,
+				record := udnssdk.RRSet{
+					RRType:    change.ResourceRecordSetUltraDNS.RRType,
+					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+					RData:     change.ResourceRecordSetUltraDNS.RData,
+					TTL:       change.ResourceRecordSetUltraDNS.TTL,
 				}
 
-				err = p.client.RRSets.Update(rrsetKey, record)
+				_,err = p.client.RRSets.Update(rrsetKey, record)
 				if err != nil {
 					return err
 				}
@@ -334,11 +332,14 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
 			ttl = int(e.RecordTTL)
 		}
 
+		// Adding suffix dot to the record name
+		recordName := fmt.Sprintf("%s.",e.DNSName)
+
 		change := &UltraDNSChanges{
 			Action: action,
 			ResourceRecordSetUltraDNS: udnssdk.RRSet{
 				RRType:    e.RecordType,
-				OwnerName: e.DNSName,
+				OwnerName: recordName,
 				RData:     e.Targets,
 				TTL:       ttl,
 			},
@@ -375,14 +376,11 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 
 func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey, rrsetRecord udnssdk.RRSet) (err error) {
 	log.Infof("In get Specific Record by zone function")
-	rrsets, err = p.client.RRSets.Select(rrsetKey)
-
-	for _, r := range rrsets {
-
-		if r.OwnerName == rrsetRecord.OwnerName && r.RRType == rrsetRecord.RRType {
-			return nil
-		}
+	_, err = p.client.RRSets.Select(rrsetKey)
+	if err != nil {
+		return fmt.Errorf("no record was found")
+	}else{
+		return nil
 	}
-
-	return fmt.Errorf("no record was found")
 }
+		
