@@ -127,18 +127,20 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 			}
 
 			for _, r := range records {
-				log.Infof("owner name %s", r.OwnerName)
-				name := fmt.Sprintf("%s", r.OwnerName)
+				if supportedRecordType(r.RRType) {
+					log.Infof("owner name %s", r.OwnerName)
+					name := fmt.Sprintf("%s", r.OwnerName)
 
-				// root name is identified by the empty string and should be
-				// translated to zone name for the endpoint entry.
-				if r.OwnerName == "" {
-					name = zone.Properties.Name
+					// root name is identified by the empty string and should be
+					// translated to zone name for the endpoint entry.
+					if r.OwnerName == "" {
+						name = zone.Properties.Name
+					}
+
+					endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL), r.RData...)
+					log.Infof("endpoint with TTL %v", endPointTTL)
+					endpoints = append(endpoints, endPointTTL)
 				}
-
-				endPointTTL := endpoint.NewEndpointWithTTL(name, r.RRType, endpoint.TTL(r.TTL), r.RData...)
-				log.Infof("endpoint with TTL %v", endPointTTL)
-				endpoints = append(endpoints, endPointTTL)
 			}
 		}
 
@@ -280,7 +282,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 					return err
 				}
 
-				_,err = p.client.RRSets.Delete(rrsetKey)
+				_, err = p.client.RRSets.Delete(rrsetKey)
 				if err != nil {
 					return err
 				}
@@ -298,7 +300,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 					TTL:       change.ResourceRecordSetUltraDNS.TTL,
 				}
 
-				_,err = p.client.RRSets.Update(rrsetKey, record)
+				_, err = p.client.RRSets.Update(rrsetKey, record)
 				if err != nil {
 					return err
 				}
@@ -333,7 +335,7 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
 		}
 
 		// Adding suffix dot to the record name
-		recordName := fmt.Sprintf("%s.",e.DNSName)
+		recordName := fmt.Sprintf("%s.", e.DNSName)
 
 		change := &UltraDNSChanges{
 			Action: action,
@@ -379,8 +381,7 @@ func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnss
 	_, err = p.client.RRSets.Select(rrsetKey)
 	if err != nil {
 		return fmt.Errorf("no record was found")
-	}else{
+	} else {
 		return nil
 	}
 }
-		
