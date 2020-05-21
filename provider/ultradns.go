@@ -274,7 +274,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 
 			case ultradnsDelete:
-				err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
+				err := p.getSpecificRecord(ctx, rrsetKey)
 				if err != nil {
 					return err
 				}
@@ -285,7 +285,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 
 			case ultradnsUpdate:
-				err := p.getSpecificRecord(ctx, rrsetKey, change.ResourceRecordSetUltraDNS)
+				err := p.getSpecificRecord(ctx, rrsetKey)
 				if err != nil {
 					return err
 				}
@@ -372,7 +372,7 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 	return change
 }
 
-func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey, rrsetRecord udnssdk.RRSet) (err error) {
+func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey) (err error) {
 	log.Infof("In get Specific Record by zone function")
 	_, err = p.client.RRSets.Select(rrsetKey)
 	if err != nil {
