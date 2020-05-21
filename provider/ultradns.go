@@ -122,7 +122,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 		}
 
 		if zone.Properties.ResourceRecordCount != 0 {
-			records, err := p.fetchRecords(ctx, zone.Properties.Name, rrsetKey)
+			records, err := p.fetchRecords(ctx, rrsetKey)
 			if err != nil {
 				return nil, err
 			}
@@ -151,7 +151,7 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 	return endpoints, nil
 }
 
-func (p *UltraDNSProvider) fetchRecords(ctx context.Context, domain string, k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
+func (p *UltraDNSProvider) fetchRecords(ctx context.Context, k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
 	log.Infof("Under fetchRecords function")
 
 	// TODO: Sane Configuration for timeouts / retries
