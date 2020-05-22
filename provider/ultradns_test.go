@@ -21,12 +21,14 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"strings"
+	_ "strings"
 	"testing"
+	"encoding/json"
+	"log"
+	"fmt"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	"github.com/stretchr/testify/assert"
-	"github.com/vultr/govultr"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
 )
@@ -43,51 +45,60 @@ func (m *mockUltraDNSZone) Delete(ctx context.Context, domain string) error {
 	return nil
 }
 
-func (m *mockUltraDNSZone) SelectWithOffset(k udnssdk.ZoneKey, offset int, limit int) ([]udnssdk.Zone, ResultInfo, *http.Response, error) {
-	return []udnssdk.Zone{{
-		properties: {
-			Name:                 "test-ultradns-provider.com.",
-			AccountName:          "teamrest",
-			Type:                 "PRIMARY",
-			DnssecStatus:         "UNSIGNED",
-			Status:               "ACTIVE",
-			Owner:                "teamrest",
-			ResourceRecordCount:  7,
-			LastModifiedDateTime: "",
-		}}}, nil, nil, nil
+func (m *mockUltraDNSZone) SelectWithOffset(k udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo string, resp *http.Response, err error) {
+	zones = []udnssdk.Zone{}
+	zone := udnssdk.Zone{}
+	zoneJson := `{
+		   Properties { 
+				Name:                 "test-ultradns-provider.com.",
+				AccountName:          "teamrest",
+				Type:                 "PRIMARY",
+				DnssecStatus:         "UNSIGNED",
+				Status:               "ACTIVE",
+				Owner:                "teamrest",
+				ResourceRecordCount:  7,
+				LastModifiedDateTime: "",
+			      },
+		}`
+	if err := json.Unmarshal([]byte(zoneJson), &zone); err != nil {
+        log.Fatal(err)
+    	}
+	
+	zones = append(zones,zone)
+	return zones, "", nil, nil
 }
 
 type mockUltraDNSRecord struct {
 	client *udnssdk.Client
 }
 
-func (m *mockUltraDNSZone) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
+func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
 	return nil
 }
 
-func (m *mockUltraDNSZone) Delete(k udnssdk.RRSetKey) error {
+func (m *mockUltraDNSRecord) Delete(k udnssdk.RRSetKey) error {
 	return nil
 }
 
-func (m *mockUltraDNSZone) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offset int, limit int) ([]udnssdk.RRSet, ResultInfo, *http.Response, error) {
+func (m *mockUltraDNSRecord) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offset int, limit int) (rrsets []udnssdk.RRSet, ResultInfo string, resp *http.Response, err error) {
 	return []udnssdk.RRSet{{
 		OwnerName: "test-ultradns-provider.com.",
 		RRType:    endpoint.RecordTypeA,
 		RData:     []string{"1.1.1.1"},
 		TTL:       86400,
-	}}, nil, nil, nil
+	}}, "", nil, nil
 }
 
-func (m *mockUltraDNSZone) Update(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
+func (m *mockUltraDNSRecord) Update(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
 	return nil
 }
 
-func TestNewVultrProvider(t *testing.T) {
+func TestNewUltraDNSProvider(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-	_, err := NewVultrProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err != nil {
 		t.Errorf("failed : %s", err)
 	}
@@ -96,21 +107,21 @@ func TestNewVultrProvider(t *testing.T) {
 	_ = os.Unsetenv("ULTRADNS_USERNAME")
 	_ = os.Unsetenv("ULTRADNS_BASEURL")
 	_ = os.Unsetenv("ULTRADNS_ACCOUNTNAME")
-	_, err = NewVultrProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
 		t.Errorf("expected to fail")
 	}
 }
 
 func TestUltraDNSProvider_Zones(t *testing.T) {
-	mocked := mockUltraDNSZone{nil}
+	mocked := mockUltraDNSZone{}
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-			Zone: &mocked,
+			Zone: mocked.client.Zone,
 		},
 	}
-
-	expected, _, _, err := provider.client.Zone.SelectWithOffset(udnssdk.RRSetKey,0,1000)
+	
+	expected, _, _, err := provider.client.Zone.SelectWithOffset(&udnssdk.ZoneKey{}, 0, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,20 +140,20 @@ func TestUltraDNSProvider_Records(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-			RRSets: &mocked,
-			Zone: &mockedDomain,
+			RRSets: mocked.client.RRSets,
+			Zone:   mockedDomain.client.Zone,
 		},
 	}
-
-	expected, _,_,err := provider.client.RRSets.SelectWithOffsetWithLimit(udnssdk.RRSetKey,0,1000)
+	rrsetKey := udnssdk.RRSetKey{}
+	expected, _, _, err := provider.client.RRSets.SelectWithOffsetWithLimit(rrsetKey, 0, 1000)
 	records, err := provider.Records(context.Background())
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	for _, v := range records {
-		assert.Equal(t, fmt.Sprintf("%s.",v.DNSName), expected[0].OwnerName)
-		assert.Equal(t, v.RecordType, expected[0].RType)
+		assert.Equal(t, fmt.Sprintf("%s.", v.DNSName), expected[0].OwnerName)
+		assert.Equal(t, v.RecordType, expected[0].RRType)
 		assert.Equal(t, int(v.RecordTTL), expected[0].TTL)
 	}
 
@@ -154,9 +165,10 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 	mockedDomain := mockUltraDNSZone{nil}
 
 	provider := &UltraDNSProvider{
-		client:udnssdk.Client{
-			RRSets: &mocked,
-			Zone: &mockedDomain,
+		client: udnssdk.Client{
+                        RRSets: mocked.client.RRSets,
+                        Zone:   mockedDomain.client.Zone,
+
 		},
 	}
 
@@ -179,18 +191,18 @@ func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-			RRSets: &mocked,
-			Zone: &mockedDomain,
+                        RRSets: mocked.client.RRSets,
+                        Zone:   mockedDomain.client.Zone,
+
 		},
 	}
 
 	recordSetKey := udnssdk.RRSetKey{
 		Zone: "test-ultradns-provider.com.",
 		Type: "A",
-		Name: "teamrest"
-
+		Name: "teamrest",
 	}
-	_, err := provider.getSpecificRecord(context.Background(), recordSetKey)
+	err := provider.getSpecificRecord(context.Background(), recordSetKey)
 	if err != nil {
 		t.Fatal(err)
 	}
