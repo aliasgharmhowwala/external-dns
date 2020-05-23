@@ -18,14 +18,14 @@ package provider
 
 import (
 	"context"
+	"encoding/json"
+	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"reflect"
 	_ "strings"
 	"testing"
-	"encoding/json"
-	"log"
-	"fmt"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	"github.com/stretchr/testify/assert"
@@ -36,61 +36,61 @@ import (
 type mockUltraDNSZone struct {
 	client *udnssdk.Client
 }
-
-func (m *mockUltraDNSZone) Create(domain, InstanceIP string) error {
-	return nil
-}
-
-func (m *mockUltraDNSZone) Delete(ctx context.Context, domain string) error {
-	return nil
-}
-
-func (m *mockUltraDNSZone) SelectWithOffset(k udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo string, resp *http.Response, err error) {
+func (m *mockUltraDNSZone) SelectWithOffset(k *udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
 	zones = []udnssdk.Zone{}
 	zone := udnssdk.Zone{}
-	zoneJson := `{
-		   Properties { 
-				Name:                 "test-ultradns-provider.com.",
-				AccountName:          "teamrest",
-				Type:                 "PRIMARY",
-				DnssecStatus:         "UNSIGNED",
-				Status:               "ACTIVE",
-				Owner:                "teamrest",
-				ResourceRecordCount:  7,
-				LastModifiedDateTime: "",
-			      },
-		}`
+	zoneJson := `
+			{
+			   "properties": {
+			      "name":"test-ultradns-provider.com.",
+			      "accountName":"teamrest",
+			      "type":"PRIMARY",
+			      "dnssecStatus":"UNSIGNED",
+			      "status":"ACTIVE",
+			      "owner":"teamrest",
+			      "resourceRecordCount":7,
+			      "lastModifiedDateTime":""
+			   }
+			}`
 	if err := json.Unmarshal([]byte(zoneJson), &zone); err != nil {
-        log.Fatal(err)
-    	}
-	
-	zones = append(zones,zone)
-	return zones, "", nil, nil
+		log.Fatal(err)
+	}
+
+	zones = append(zones, zone)
+	return zones, udnssdk.ResultInfo{}, nil, nil
 }
 
-type mockUltraDNSRecord struct {
-	client *udnssdk.Client
+type mockUltraDNSRecord struct{
+        client *udnssdk.Client
 }
 
-func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
-	return nil
+func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) (*http.Response, error){
+	return nil,nil
 }
 
-func (m *mockUltraDNSRecord) Delete(k udnssdk.RRSetKey) error {
-	return nil
+func (m *mockUltraDNSRecord) Select(k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
+	return nil,nil
 }
 
-func (m *mockUltraDNSRecord) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offset int, limit int) (rrsets []udnssdk.RRSet, ResultInfo string, resp *http.Response, err error) {
+func (m *mockUltraDNSRecord) SelectWithOffset(k udnssdk.RRSetKey, offset int) ([]udnssdk.RRSet,udnssdk.ResultInfo, *http.Response, error) {
+	return nil,udnssdk.ResultInfo{},nil,nil
+}
+
+func (m *mockUltraDNSRecord) Update(udnssdk.RRSetKey, udnssdk.RRSet) (*http.Response, error){
+	return nil,nil
+}
+
+func (m *mockUltraDNSRecord) Delete(k udnssdk.RRSetKey) (*http.Response, error){
+	return nil,nil
+}
+
+func (m *mockUltraDNSRecord) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offset int, limit int) (rrsets []udnssdk.RRSet, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
 	return []udnssdk.RRSet{{
 		OwnerName: "test-ultradns-provider.com.",
 		RRType:    endpoint.RecordTypeA,
 		RData:     []string{"1.1.1.1"},
 		TTL:       86400,
-	}}, "", nil, nil
-}
-
-func (m *mockUltraDNSRecord) Update(k udnssdk.RRSetKey, rrset udnssdk.RRSet) error {
-	return nil
+	}}, udnssdk.ResultInfo{}, nil, nil
 }
 
 func TestNewUltraDNSProvider(t *testing.T) {
@@ -117,11 +117,16 @@ func TestUltraDNSProvider_Zones(t *testing.T) {
 	mocked := mockUltraDNSZone{}
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-			Zone: mocked.client.Zone,
+			Zone: &mocked,
 		},
 	}
-	
-	expected, _, _, err := provider.client.Zone.SelectWithOffset(&udnssdk.ZoneKey{}, 0, 1000)
+
+	zoneKey := &udnssdk.ZoneKey{
+		Zone:        "",
+		AccountName: "teamrest",
+	}
+
+	expected, _, _, err := provider.client.Zone.SelectWithOffset(zoneKey, 0, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,13 +140,13 @@ func TestUltraDNSProvider_Zones(t *testing.T) {
 }
 
 func TestUltraDNSProvider_Records(t *testing.T) {
-	mocked := mockUltraDNSRecord{nil}
-	mockedDomain := mockUltraDNSZone{nil}
+	mocked := mockUltraDNSRecord{}
+	mockedDomain := mockUltraDNSZone{}
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-			RRSets: mocked.client.RRSets,
-			Zone:   mockedDomain.client.Zone,
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
 		},
 	}
 	rrsetKey := udnssdk.RRSetKey{}
@@ -166,8 +171,8 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-                        RRSets: mocked.client.RRSets,
-                        Zone:   mockedDomain.client.Zone,
+                        RRSets: &mocked,
+                        Zone:   &mockedDomain,
 
 		},
 	}
@@ -177,8 +182,8 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 		{DNSName: "ttl.test-ultradns-provider.com.", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: 100},
 	}
 
-	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com.", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
-	changes.Delete = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com.", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A"}}
+	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
+	changes.Delete = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A"}}
 	err := provider.ApplyChanges(context.Background(), changes)
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
@@ -191,8 +196,8 @@ func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-                        RRSets: mocked.client.RRSets,
-                        Zone:   mockedDomain.client.Zone,
+                        RRSets: &mocked,
+                        Zone:   &mockedDomain,
 
 		},
 	}
