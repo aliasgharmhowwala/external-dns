@@ -246,11 +246,25 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 
 			if change.ResourceRecordSetUltraDNS.RRType == "CNAME" {
 				cnameownerName = change.ResourceRecordSetUltraDNS.OwnerName
-			} else if change.ResourceSetUltraDNS.RRType == "TXT" {
+			} else if change.ResourceRecordSetUltraDNS.RRType == "TXT" {
 				txtownerName = change.ResourceRecordSetUltraDNS.OwnerName
 			}
 
 			if cnameownerName == txtownerName {
+				rrsetKey := udnssdk.RRSetKey{
+					Zone: zoneName,
+					Type: endpoint.RecordTypeCNAME,
+					Name: change.ResourceRecordSetUltraDNS.OwnerName,
+				}
+				err := p.getSpecificRecord(ctx, rrsetKey)
+				if err != nil {
+					return err
+				}
+
+				_, err = p.client.RRSets.Delete(rrsetKey)
+				if err != nil {
+					return err
+				}
 				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
 			}
 
