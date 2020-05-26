@@ -227,6 +227,8 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.Zone
 }
 
 func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
+	cnameownerName := "cname"
+	txtownerName := "txt"
 	if len(changes) == 0 {
 		log.Infof("All records are already up to date")
 		return nil
@@ -243,12 +245,12 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 		for _, change := range changes {
 
 			if change.ResourceRecordSetUltraDNS.RRType == "CNAME" {
-				cnameownerName := change.ResourceRecordSetUltraDNS.OwnerName
+				cnameownerName = change.ResourceRecordSetUltraDNS.OwnerName
 			} else if change.ResourceSetUltraDNS.RRType == "TXT" {
-				txtownerName := change.ResourceRecordSetUltraDNS.OwnerName
+				txtownerName = change.ResourceRecordSetUltraDNS.OwnerName
 			}
 
-			if cnameownerName == txtowneName {
+			if cnameownerName == txtownerName {
 				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
 			}
 
