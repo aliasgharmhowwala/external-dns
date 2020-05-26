@@ -188,6 +188,7 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 	if err != nil {
 		t.Errorf("should not fail, %s", err)
 	}
+
 }
 
 func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
@@ -209,6 +210,31 @@ func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
 	err := provider.getSpecificRecord(context.Background(), recordSetKey)
 	if err != nil {
 		t.Fatal(err)
+	}
+
+}
+
+//Fail case scenario testing where CNAME and TXT Record name are same
+func TestUltraDNSProvider_ApplyChangesCNAME(t *testing.T) {
+	changes := &plan.Changes{}
+	mocked := mockUltraDNSRecord{nil}
+	mockedDomain := mockUltraDNSZone{nil}
+
+	provider := &UltraDNSProvider{
+		client: udnssdk.Client{
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
+		},
+	}
+
+	changes.Create = []*endpoint.Endpoint{
+		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "CNAME"},
+		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "TXT"},
+	}
+
+	err := provider.ApplyChanges(context.Background(), changes)
+	if err == nil {
+		t.Errorf("expected to fail")
 	}
 
 }
