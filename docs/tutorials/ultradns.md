@@ -115,7 +115,7 @@ spec:
         args:
         - --source=service # ingress is also possible
         - --domain-filter=example.com # (optional) limit to only example.com domains; change to match the zone created above.
-        - --provider=vultr
+        - --provider=ultradns
         env:
         - name: ULTRADNS_USERNAME
           value: ""
