@@ -49,7 +49,6 @@ type UltraDNSChanges struct {
 
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
 func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
-	log.Infof("Under provider function")
 	Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
 	if !ok {
 		return nil, fmt.Errorf("no username found")
@@ -87,7 +86,6 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 
 // Zones returns list of hosted zones
 func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
-	log.Infof("Under Zones function")
 	zonename := ""
 	zoneKey := &udnssdk.ZoneKey{
 		Zone:        zonename,
@@ -102,7 +100,6 @@ func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
 }
 
 func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
-	log.Infof("Under Records function")
 	var endpoints []*endpoint.Endpoint
 	zones, err := p.Zones(ctx)
 	if err != nil {
@@ -140,7 +137,6 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 					}
 
 					endPointTTL := endpoint.NewEndpointWithTTL(name, recordTypeArray[0], endpoint.TTL(r.TTL), r.RData...)
-					log.Infof("endpoint with TTL %v", endPointTTL)
 					endpoints = append(endpoints, endPointTTL)
 				}
 			}
@@ -152,8 +148,6 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 }
 
 func (p *UltraDNSProvider) fetchRecords(ctx context.Context, k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
-	log.Infof("Under fetchRecords function")
-
 	// TODO: Sane Configuration for timeouts / retries
 	maxerrs := 5
 	waittime := 5 * time.Second
@@ -189,8 +183,6 @@ func (p *UltraDNSProvider) fetchRecords(ctx context.Context, k udnssdk.RRSetKey)
 }
 
 func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.ZoneKey) ([]udnssdk.Zone, error) {
-	log.Infof("Under fetch zones function")
-
 	// Select will list the zone rrsets, paginating through all available results
 	// TODO: Sane Configuration for timeouts / retries
 	maxerrs := 5
@@ -235,7 +227,6 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.Zone
 }
 
 func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
-	log.Infof("In submitChanges function")
 	if len(changes) == 0 {
 		log.Infof("All records are already up to date")
 		return nil
@@ -245,7 +236,6 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 	if err != nil {
 		return err
 	}
-	log.Infof("Change Printin submitChanges by zone %+v\n%+v ", changes, zones)
 	zoneChanges := seperateChangeByZone(zones, changes)
 
 	for zoneName, changes := range zoneChanges {
@@ -309,8 +299,6 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 }
 
 func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	log.Infof("In ApplyChanges function")
-
 	combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
 	log.Infof("value of changes %v,%v,%v", changes.Create, changes.UpdateNew, changes.Delete)
 	combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
@@ -321,10 +309,8 @@ func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 }
 
 func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
-	log.Infof("In newUltraDNSChanges function action string '%s' ", action)
 	changes := make([]*UltraDNSChanges, 0, len(endpoints))
 	ttl := ultradnsTTL
-	log.Infof("Changes %v ", endpoints)
 	for _, e := range endpoints {
 
 		if e.RecordTTL.IsConfigured() {
@@ -342,22 +328,18 @@ func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraD
 				TTL:       ttl,
 			},
 		}
-		log.Infof("Changes %v ", change)
 		changes = append(changes, change)
 	}
 	return changes
 }
 
 func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
-	log.Infof("In seperate changes by zone function")
 	change := make(map[string][]*UltraDNSChanges)
 	zoneNameID := zoneIDName{}
-	log.Infof("zones Printin seperate changes by zones %+v ", zones)
 	for _, z := range zones {
 		zoneNameID.Add(z.Properties.Name, z.Properties.Name)
 		change[z.Properties.Name] = []*UltraDNSChanges{}
 	}
-	log.Infof("Change Printin seperate changes by zone %+v ", change)
 
 	for _, c := range changes {
 		log.Infof("owner Name: %s", c.ResourceRecordSetUltraDNS.OwnerName)
@@ -373,7 +355,6 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 }
 
 func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey) (err error) {
-	log.Infof("In get Specific Record by zone function")
 	_, err = p.client.RRSets.Select(rrsetKey)
 	if err != nil {
 		return fmt.Errorf("no record was found")

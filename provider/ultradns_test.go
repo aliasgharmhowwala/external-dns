@@ -36,6 +36,7 @@ import (
 type mockUltraDNSZone struct {
 	client *udnssdk.Client
 }
+
 func (m *mockUltraDNSZone) SelectWithOffset(k *udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
 	zones = []udnssdk.Zone{}
 	zone := udnssdk.Zone{}
@@ -60,28 +61,28 @@ func (m *mockUltraDNSZone) SelectWithOffset(k *udnssdk.ZoneKey, offset int, limi
 	return zones, udnssdk.ResultInfo{}, nil, nil
 }
 
-type mockUltraDNSRecord struct{
-        client *udnssdk.Client
+type mockUltraDNSRecord struct {
+	client *udnssdk.Client
 }
 
-func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) (*http.Response, error){
-	return nil,nil
+func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) (*http.Response, error) {
+	return nil, nil
 }
 
 func (m *mockUltraDNSRecord) Select(k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
-	return nil,nil
+	return nil, nil
 }
 
-func (m *mockUltraDNSRecord) SelectWithOffset(k udnssdk.RRSetKey, offset int) ([]udnssdk.RRSet,udnssdk.ResultInfo, *http.Response, error) {
-	return nil,udnssdk.ResultInfo{},nil,nil
+func (m *mockUltraDNSRecord) SelectWithOffset(k udnssdk.RRSetKey, offset int) ([]udnssdk.RRSet, udnssdk.ResultInfo, *http.Response, error) {
+	return nil, udnssdk.ResultInfo{}, nil, nil
 }
 
-func (m *mockUltraDNSRecord) Update(udnssdk.RRSetKey, udnssdk.RRSet) (*http.Response, error){
-	return nil,nil
+func (m *mockUltraDNSRecord) Update(udnssdk.RRSetKey, udnssdk.RRSet) (*http.Response, error) {
+	return nil, nil
 }
 
-func (m *mockUltraDNSRecord) Delete(k udnssdk.RRSetKey) (*http.Response, error){
-	return nil,nil
+func (m *mockUltraDNSRecord) Delete(k udnssdk.RRSetKey) (*http.Response, error) {
+	return nil, nil
 }
 
 func (m *mockUltraDNSRecord) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offset int, limit int) (rrsets []udnssdk.RRSet, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
@@ -171,15 +172,14 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-                        RRSets: &mocked,
-                        Zone:   &mockedDomain,
-
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
 		},
 	}
 
 	changes.Create = []*endpoint.Endpoint{
-		{DNSName: "test-ultradns-provider.com.", Targets: endpoint.Targets{"1.1.1.1"}},
-		{DNSName: "ttl.test-ultradns-provider.com.", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: 100},
+		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}},
+		{DNSName: "ttl.test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: 100},
 	}
 
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
@@ -196,9 +196,8 @@ func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
 
 	provider := &UltraDNSProvider{
 		client: udnssdk.Client{
-                        RRSets: &mocked,
-                        Zone:   &mockedDomain,
-
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
 		},
 	}
 
