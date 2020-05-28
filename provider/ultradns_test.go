@@ -127,7 +127,7 @@ func TestUltraDNSProvider_Zones(t *testing.T) {
 		AccountName: "teamrest",
 	}
 
-	expected, _, _, err := provider.client.Zone.SelectWithOffset(zoneKey, 0, 1000)
+	expected, _, _, err := provider.client.Zone.SelectWithOffsetWithLimit(zoneKey, 0, 1000)
 	if err != nil {
 		t.Fatal(err)
 	}
