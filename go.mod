@@ -14,6 +14,7 @@ require (
 	github.com/alecthomas/colour v0.1.0 // indirect
 	github.com/alecthomas/kingpin v2.2.5+incompatible
 	github.com/alecthomas/repr v0.0.0-20181024024818-d37bc2a10ba1 // indirect
+	github.com/aliasgharmhowwala/ultradns-sdk-go v1.3.11
 	github.com/aliyun/alibaba-cloud-sdk-go v0.0.0-20180828111155-cad214d7d71f
 	github.com/aws/aws-sdk-go v1.27.4
 	github.com/cloudflare/cloudflare-go v0.10.1
@@ -51,7 +52,7 @@ require (
 	github.com/stretchr/testify v1.4.0
 	github.com/terra-farm/udnssdk v1.3.5 // indirect
 	github.com/transip/gotransip v5.8.2+incompatible
-	github.com/ultradns/ultradns-sdk-go v1.3.6
+	github.com/ultradns/ultradns-sdk-go v1.3.6 // indirect
 	github.com/vinyldns/go-vinyldns v0.0.0-20190611170422-7119fe55ed92
 	github.com/vultr/govultr v0.3.2
 	go.etcd.io/etcd v0.5.0-alpha.5.0.20200401174654-e694b7bb0875

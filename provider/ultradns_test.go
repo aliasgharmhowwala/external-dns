@@ -27,7 +27,7 @@ import (
 	_ "strings"
 	"testing"
 
-	udnssdk "github.com/ultradns/ultradns-sdk-go"
+	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	"github.com/stretchr/testify/assert"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
