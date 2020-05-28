@@ -195,7 +195,7 @@ func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.Zone
 	limit := 1000
 
 	for {
-		reqZones, ri, res, err := p.client.Zone.SelectWithOffset(zoneKey, offset, limit)
+		reqZones, ri, res, err := p.client.Zone.SelectWithOffsetWithLimit(zoneKey, offset, limit)
 		if err != nil {
 			if res != nil && res.StatusCode >= 500 {
 				errcnt = errcnt + 1

@@ -37,7 +37,7 @@ type mockUltraDNSZone struct {
 	client *udnssdk.Client
 }
 
-func (m *mockUltraDNSZone) SelectWithOffset(k *udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
+func (m *mockUltraDNSZone) SelectWithOffsetWithLimit(k *udnssdk.ZoneKey, offset int, limit int) (zones []udnssdk.Zone, ResultInfo udnssdk.ResultInfo, resp *http.Response, err error) {
 	zones = []udnssdk.Zone{}
 	zone := udnssdk.Zone{}
 	zoneJson := `
