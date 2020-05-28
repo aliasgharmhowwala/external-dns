@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	ultradnsTTL    = 86400
+	ultradnsDefaultTTL    = 86400
 	ultradnsCreate = "CREATE"
 	ultradnsDelete = "DELETE"
 	ultradnsUpdate = "UPDATE"
@@ -65,7 +65,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 	}
 	AccountName, ok := os.LookupEnv("ULTRADNS_ACCOUNTNAME")
 	if !ok {
-		return nil, fmt.Errorf("Please provide valid accountname")
+		AccountName = ""
 	}
 
 	client, err := udnssdk.NewClient(Username, Password, BaseURL)
@@ -86,9 +86,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 
 // Zones returns list of hosted zones
 func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
-	zonename := ""
 	zoneKey := &udnssdk.ZoneKey{
-		Zone:        zonename,
 		AccountName: p.AccountName,
 	}
 	zones, err := p.fetchZones(ctx, zoneKey)
@@ -337,7 +335,7 @@ func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 
 func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
 	changes := make([]*UltraDNSChanges, 0, len(endpoints))
-	ttl := ultradnsTTL
+	ttl := ultradnsDefaultTTL
 	for _, e := range endpoints {
 
 		if e.RecordTTL.IsConfigured() {
