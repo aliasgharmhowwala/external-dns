@@ -20,7 +20,7 @@ import (
 	"strings"
 	"time"
 
-	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
+	udnssdk "github.com/ultradns/ultradns-sdk-go"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
