@@ -265,21 +265,73 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
 			}
-
-			log.WithFields(log.Fields{
-				"record": change.ResourceRecordSetUltraDNS.OwnerName,
-				"type":   change.ResourceRecordSetUltraDNS.RRType,
-				"ttl":    change.ResourceRecordSetUltraDNS.TTL,
-				"action": change.Action,
-				"zone":   zoneName,
-			}).Info("Changing record.")
-
 			rrsetKey := udnssdk.RRSetKey{
 				Zone: zoneName,
 				Type: change.ResourceRecordSetUltraDNS.RRType,
 				Name: change.ResourceRecordSetUltraDNS.OwnerName,
 			}
 
+			if change.ResourceRecordSetUltraDNS.RRType == "A"  ||  change.ResourceRecordSetUltraDNS.RRType "AAAA"{
+				if change.action == "CREATE"{
+				record := udnssdk.RRSet{
+					RRType:    change.ResourceRecordSetUltraDNS.RRType,
+					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+					RData:     change.ResourceRecordSetUltraDNS.RData,
+					TTL:       change.ResourceRecordSetUltraDNS.TTL,
+					Profile: udnssdk.RDPoolProfile {
+						Order: "ROUND_ROBIN",
+						Description: change.ResourceRecordSetUltraDNS.OwnerName,
+					},
+				}
+				}else if change.action == "UPDATE"{
+					emptyRDPool := udnssdk.RDPoolProfile{}
+					rdPool,err := p.getRdPoolDetails(rrsetKey)
+					if emptyRDPool == rdPool{
+						record := udnssdk.RRSet{
+							RRType:    change.ResourceRecordSetUltraDNS.RRType,
+							OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+							RData:     change.ResourceRecordSetUltraDNS.RData,
+							TTL:       change.ResourceRecordSetUltraDNS.TTL,
+							Profile: udnssdk.RDPoolProfile {
+								Order: "ROUND_ROBIN",
+								Description: change.ResourceRecordSetUltraDNS.OwnerName,
+							},
+						}	
+					}else{
+					record := udnssdk.RRSet{
+						RRType:    change.ResourceRecordSetUltraDNS.RRType,
+						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+						RData:     change.ResourceRecordSetUltraDNS.RData,
+						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+						Profile: udnssdk.RDPoolProfile {
+							Context: rdPool.Context,
+							Order: rdPool.Order,
+							Description: change.ResourceRecordSetUltraDNS.OwnerName,
+						},
+					}
+					
+				}
+
+				}else{
+					record := udnssdk.RRSet{
+						RRType:    change.ResourceRecordSetUltraDNS.RRType,
+						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+						RData:     change.ResourceRecordSetUltraDNS.RData,
+						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+					}
+				}
+
+							
+			log.WithFields(log.Fields{
+				"record": change.ResourceRecordSetUltraDNS.OwnerName,
+				"type":   change.ResourceRecordSetUltraDNS.RRType,
+				"ttl":    change.ResourceRecordSetUltraDNS.TTL,
+				"action": change.Action,
+				"zone":   zoneName,
+				"profile": change.ResourceRecordSetUltraDNS.Profile,
+			}).Info("Changing record.")
+
+					
 			switch change.Action {
 			case ultradnsCreate:
 				res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
@@ -304,14 +356,6 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				if err != nil {
 					return err
 				}
-
-				record := udnssdk.RRSet{
-					RRType:    change.ResourceRecordSetUltraDNS.RRType,
-					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-					RData:     change.ResourceRecordSetUltraDNS.RData,
-					TTL:       change.ResourceRecordSetUltraDNS.TTL,
-				}
-
 				_, err = p.client.RRSets.Update(rrsetKey, record)
 				if err != nil {
 					return err
@@ -335,7 +379,7 @@ func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 
 func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
 	changes := make([]*UltraDNSChanges, 0, len(endpoints))
-	ttl := ultradnsDefaultTTL
+	ttl := ultradnsTTL
 	for _, e := range endpoints {
 
 		if e.RecordTTL.IsConfigured() {
@@ -385,5 +429,23 @@ func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnss
 		return fmt.Errorf("no record was found")
 	} else {
 		return nil
+	}
+}
+
+func (p *UltraDNSProvider) getRdPoolDetails(k udnssdk.RRSetKey)(rdPool udnssdk.RDPoolProfile, err error){
+	rrsets, err = p.client.RRSets.Select(rrsetKey)
+	if err != nil {
+		return fmt.Errorf("no record was found")
+	} else {
+		rdPoolObject := rrsets.Profile.GetProfileObject()
+
+		if (rdPoolObject.(type) == udnssdk.RDPoolProfile.(type))
+		{
+			return rdPoolObject,nil
+		}else{
+			log.Infof("No RD Pool found for rrset %v", rrsets)
+			return udnssdk.RDPoolProfile{},nil
+		}
+		
 	}
 }
