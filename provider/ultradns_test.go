@@ -70,7 +70,20 @@ func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) (*h
 }
 
 func (m *mockUltraDNSRecord) Select(k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
-	return nil, nil
+
+	rdPool := udnssdk.RDPoolProfile{
+		Context:     "http://schemas.ultradns.com/RDPool.jsonschema",
+		Order:       "ROUND_ROBIN",
+		Description: "test-ultradns-provider.com.",
+	}
+	return []udnssdk.RRSet{{
+		OwnerName: "test-ultradns-provider.com.",
+		RRType:    endpoint.RecordTypeA,
+		RData:     []string{"1.1.1.1"},
+		TTL:       86400,
+		Profile:   rdPool.RawProfile(),
+	}}, nil
+
 }
 
 func (m *mockUltraDNSRecord) SelectWithOffset(k udnssdk.RRSetKey, offset int) ([]udnssdk.RRSet, udnssdk.ResultInfo, *http.Response, error) {
@@ -178,11 +191,12 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 	}
 
 	changes.Create = []*endpoint.Endpoint{
-		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}},
-		{DNSName: "ttl.test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordTTL: 100},
+		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "A"},
+		{DNSName: "ttl.test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "A", RecordTTL: 100},
 	}
 
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
+	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2", "1.1.2.3", "1.1.2.4"}, RecordType: "AAAA", RecordTTL: 100}}
 	changes.Delete = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A"}}
 	err := provider.ApplyChanges(context.Background(), changes)
 	if err != nil {
@@ -235,6 +249,36 @@ func TestUltraDNSProvider_ApplyChangesCNAME(t *testing.T) {
 	err := provider.ApplyChanges(context.Background(), changes)
 	if err == nil {
 		t.Errorf("expected to fail")
+	}
+
+}
+
+// This will work if you would set the environment variables such as "ULTRADNS_INTEGRATION" and zone should be avaialble "kubernetes-ultradns-provider-test.com"
+func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
+
+	_, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
+	if !ok {
+		log.Printf("Skipping test")
+
+	} else {
+
+		provider,err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"kubernetes-ultradns-provider-test.com"}), false)
+		changes := &plan.Changes{}
+		changes.Create = []*endpoint.Endpoint{
+			{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "A"},
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334"}, RecordType: "AAAA", RecordTTL: 100},
+		}
+
+		changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
+		changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7004", "2001:0db8:85a3:0000:0000:8a2e:0370:7114"}, RecordType: "AAAA", RecordTTL: 100}}
+		changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7004", "2001:0db8:85a3:0000:0000:8a2e:0370:7154"}, RecordType: "AAAA", RecordTTL: 100}}
+		changes.Delete = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A"}}
+                changes.Delete = []*endpoint.Endpoint{{DNSName: "ttl.kubernetes-ultradns-provider-test.com",Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7004", "2001:0db8:85a3:0000:0000:8a2e:0370:7154"},RecordType: "AAAA", RecordTTL: 100}}
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err != nil {
+			t.Errorf("should not fail, %s", err)
+		}
+
 	}
 
 }

@@ -19,6 +19,7 @@ import (
 	"os"
 	"strings"
 	"time"
+	"reflect"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	log "github.com/sirupsen/logrus"
@@ -27,10 +28,10 @@ import (
 )
 
 const (
-	ultradnsDefaultTTL    = 86400
-	ultradnsCreate = "CREATE"
-	ultradnsDelete = "DELETE"
-	ultradnsUpdate = "UPDATE"
+	ultradnsDefaultTTL = 86400
+	ultradnsCreate     = "CREATE"
+	ultradnsDelete     = "DELETE"
+	ultradnsUpdate     = "UPDATE"
 )
 
 type UltraDNSProvider struct {
@@ -270,68 +271,72 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				Type: change.ResourceRecordSetUltraDNS.RRType,
 				Name: change.ResourceRecordSetUltraDNS.OwnerName,
 			}
-
-			if change.ResourceRecordSetUltraDNS.RRType == "A"  ||  change.ResourceRecordSetUltraDNS.RRType "AAAA"{
-				if change.action == "CREATE"{
-				record := udnssdk.RRSet{
-					RRType:    change.ResourceRecordSetUltraDNS.RRType,
-					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-					RData:     change.ResourceRecordSetUltraDNS.RData,
-					TTL:       change.ResourceRecordSetUltraDNS.TTL,
-					Profile: udnssdk.RDPoolProfile {
-						Order: "ROUND_ROBIN",
+			record := udnssdk.RRSet{}
+			if change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" {
+				if change.Action == "CREATE" {
+					rdPoolObject := udnssdk.RDPoolProfile{
+						Context:     string("http://schemas.ultradns.com/RDPool.jsonschema"),
+						Order:       "ROUND_ROBIN",
 						Description: change.ResourceRecordSetUltraDNS.OwnerName,
-					},
-				}
-				}else if change.action == "UPDATE"{
+					}
+					record = udnssdk.RRSet{
+						RRType:    change.ResourceRecordSetUltraDNS.RRType,
+						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+						RData:     change.ResourceRecordSetUltraDNS.RData,
+						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+						Profile:   rdPoolObject.RawProfile(),
+					}
+				} else if change.Action == "UPDATE" {
 					emptyRDPool := udnssdk.RDPoolProfile{}
-					rdPool,err := p.getRdPoolDetails(rrsetKey)
-					if emptyRDPool == rdPool{
-						record := udnssdk.RRSet{
+					rdPool, _ := p.getRdPoolDetails(rrsetKey)
+					if emptyRDPool == rdPool {
+						log.Infof("in empty rdpool loop")
+						rdPoolObject := udnssdk.RDPoolProfile{
+							Context:     string("http://schemas.ultradns.com/RDPool.jsonschema"),
+							Order:       "ROUND_ROBIN",
+							Description: change.ResourceRecordSetUltraDNS.OwnerName,
+						}
+						record = udnssdk.RRSet{
 							RRType:    change.ResourceRecordSetUltraDNS.RRType,
 							OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
 							RData:     change.ResourceRecordSetUltraDNS.RData,
 							TTL:       change.ResourceRecordSetUltraDNS.TTL,
-							Profile: udnssdk.RDPoolProfile {
-								Order: "ROUND_ROBIN",
-								Description: change.ResourceRecordSetUltraDNS.OwnerName,
-							},
-						}	
-					}else{
-					record := udnssdk.RRSet{
-						RRType:    change.ResourceRecordSetUltraDNS.RRType,
-						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-						RData:     change.ResourceRecordSetUltraDNS.RData,
-						TTL:       change.ResourceRecordSetUltraDNS.TTL,
-						Profile: udnssdk.RDPoolProfile {
-							Context: rdPool.Context,
-							Order: rdPool.Order,
+							Profile:   rdPoolObject.RawProfile(),
+						}
+					} else {
+						log.Infof("in non empty rdpool loop %+v",rdPool)
+						rdPoolObject := udnssdk.RDPoolProfile{
+							Context:     rdPool.Context,
+							Order:       rdPool.Order,
 							Description: change.ResourceRecordSetUltraDNS.OwnerName,
-						},
-					}
-					
-				}
-
-				}else{
-					record := udnssdk.RRSet{
-						RRType:    change.ResourceRecordSetUltraDNS.RRType,
-						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-						RData:     change.ResourceRecordSetUltraDNS.RData,
-						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+						}
+						record = udnssdk.RRSet{
+							RRType:    change.ResourceRecordSetUltraDNS.RRType,
+							OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+							RData:     change.ResourceRecordSetUltraDNS.RData,
+							TTL:       change.ResourceRecordSetUltraDNS.TTL,
+							Profile:   rdPoolObject.RawProfile(),
+						}
 					}
 				}
+			} else {
+				record = udnssdk.RRSet{
+					RRType:    change.ResourceRecordSetUltraDNS.RRType,
+					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+					RData:     change.ResourceRecordSetUltraDNS.RData,
+					TTL:       change.ResourceRecordSetUltraDNS.TTL,
+				}
+			}
 
-							
 			log.WithFields(log.Fields{
-				"record": change.ResourceRecordSetUltraDNS.OwnerName,
-				"type":   change.ResourceRecordSetUltraDNS.RRType,
-				"ttl":    change.ResourceRecordSetUltraDNS.TTL,
-				"action": change.Action,
-				"zone":   zoneName,
+				"record":  change.ResourceRecordSetUltraDNS.OwnerName,
+				"type":    change.ResourceRecordSetUltraDNS.RRType,
+				"ttl":     change.ResourceRecordSetUltraDNS.TTL,
+				"action":  change.Action,
+				"zone":    zoneName,
 				"profile": change.ResourceRecordSetUltraDNS.Profile,
 			}).Info("Changing record.")
 
-					
 			switch change.Action {
 			case ultradnsCreate:
 				res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
@@ -379,7 +384,7 @@ func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Chang
 
 func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
 	changes := make([]*UltraDNSChanges, 0, len(endpoints))
-	ttl := ultradnsTTL
+	ttl := ultradnsDefaultTTL
 	for _, e := range endpoints {
 
 		if e.RecordTTL.IsConfigured() {
@@ -432,20 +437,26 @@ func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnss
 	}
 }
 
-func (p *UltraDNSProvider) getRdPoolDetails(k udnssdk.RRSetKey)(rdPool udnssdk.RDPoolProfile, err error){
-	rrsets, err = p.client.RRSets.Select(rrsetKey)
+func (p *UltraDNSProvider) getRdPoolDetails(k udnssdk.RRSetKey) (rdPool udnssdk.RDPoolProfile, err error) {
+	rrsets, err := p.client.RRSets.Select(k)
 	if err != nil {
-		return fmt.Errorf("no record was found")
+		return udnssdk.RDPoolProfile{},fmt.Errorf("no record was found")
 	} else {
-		rdPoolObject := rrsets.Profile.GetProfileObject()
-
-		if (rdPoolObject.(type) == udnssdk.RDPoolProfile.(type))
-		{
-			return rdPoolObject,nil
-		}else{
-			log.Infof("No RD Pool found for rrset %v", rrsets)
-			return udnssdk.RDPoolProfile{},nil
+		log.Infof("RD Pool details,%+v",rrsets[0].Profile)
+		if len(rrsets[0].Profile) != 0{
+			rdPoolObject,_ := rrsets[0].Profile.GetProfileObject()
+			log.Infof("type of %v",reflect.TypeOf(rdPoolObject))
+			log.Infof("type of %v",reflect.TypeOf(udnssdk.RDPoolProfile{}))
+			if reflect.TypeOf(rdPoolObject) == reflect.TypeOf(udnssdk.RDPoolProfile{}) {
+				return rdPoolObject.(udnssdk.RDPoolProfile), nil
+			} else {
+				log.Infof("No RD Pool found for rrset %v", rrsets)
+				return udnssdk.RDPoolProfile{}, nil
+			}
+		}else {
+			log.Infof("No pool found")
+			return udnssdk.RDPoolProfile{}, nil
 		}
-		
+
 	}
 }
