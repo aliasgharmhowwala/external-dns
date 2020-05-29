@@ -275,7 +275,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 			if change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" {
 				if change.Action == "CREATE" {
 					rdPoolObject := udnssdk.RDPoolProfile{
-						Context:     string("http://schemas.ultradns.com/RDPool.jsonschema"),
+						Context:  string("http://schemas.ultradns.com/RDPool.jsonschema"),
 						Order:       "ROUND_ROBIN",
 						Description: change.ResourceRecordSetUltraDNS.OwnerName,
 					}

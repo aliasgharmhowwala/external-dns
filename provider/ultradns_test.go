@@ -72,7 +72,7 @@ func (m *mockUltraDNSRecord) Create(k udnssdk.RRSetKey, rrset udnssdk.RRSet) (*h
 func (m *mockUltraDNSRecord) Select(k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
 
 	rdPool := udnssdk.RDPoolProfile{
-		Context:     "http://schemas.ultradns.com/RDPool.jsonschema",
+		Context:     string("http://schemas.ultradns.com/RDPool.jsonschema"),
 		Order:       "ROUND_ROBIN",
 		Description: "test-ultradns-provider.com.",
 	}
@@ -194,7 +194,7 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 		{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "A"},
 		{DNSName: "ttl.test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.1"}, RecordType: "A", RecordTTL: 100},
 	}
-
+	 changes.Create = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.1.2"}, RecordType: "A"}}
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2", "1.1.2.3", "1.1.2.4"}, RecordType: "AAAA", RecordTTL: 100}}
 	changes.Delete = []*endpoint.Endpoint{{DNSName: "test-ultradns-provider.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A"}}
