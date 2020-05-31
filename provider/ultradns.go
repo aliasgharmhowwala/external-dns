@@ -14,449 +14,450 @@ limitations under the License.
 package provider
 
 import (
-	"context"
-	"fmt"
-	"os"
-	"strings"
-	"time"
-	"reflect"
+        "context"
+        "fmt"
+        "os"
+        "strings"
+        "time"
+        "reflect"
 
-	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
-	log "github.com/sirupsen/logrus"
-	"sigs.k8s.io/external-dns/endpoint"
-	"sigs.k8s.io/external-dns/plan"
+        udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
+        log "github.com/sirupsen/logrus"
+        "sigs.k8s.io/external-dns/endpoint"
+        "sigs.k8s.io/external-dns/plan"
 )
 
 const (
-	ultradnsDefaultTTL = 86400
-	ultradnsCreate     = "CREATE"
-	ultradnsDelete     = "DELETE"
-	ultradnsUpdate     = "UPDATE"
+        ultradnsDefaultTTL = 198
+        ultradnsCreate     = "CREATE"
+        ultradnsDelete     = "DELETE"
+        ultradnsUpdate     = "UPDATE"
 )
 
 type UltraDNSProvider struct {
-	client udnssdk.Client
+        client udnssdk.Client
 
-	domainFilter endpoint.DomainFilter
-	DryRun       bool
-	AccountName  string
+        domainFilter endpoint.DomainFilter
+        DryRun       bool
+        AccountName  string
 }
 
 type UltraDNSChanges struct {
-	Action string
+        Action string
 
-	ResourceRecordSetUltraDNS udnssdk.RRSet
+        ResourceRecordSetUltraDNS udnssdk.RRSet
 }
 
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
 func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
-	Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
-	if !ok {
-		return nil, fmt.Errorf("no username found")
-	}
+        Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
+        if !ok {
+                return nil, fmt.Errorf("no username found")
+        }
 
-	Password, ok := os.LookupEnv("ULTRADNS_PASSWORD")
-	if !ok {
-		return nil, fmt.Errorf("no password found")
-	}
+        Password, ok := os.LookupEnv("ULTRADNS_PASSWORD")
+        if !ok {
+                return nil, fmt.Errorf("no password found")
+        }
 
-	BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
-	if !ok {
-		return nil, fmt.Errorf("no baseurl found")
-	}
-	AccountName, ok := os.LookupEnv("ULTRADNS_ACCOUNTNAME")
-	if !ok {
-		AccountName = ""
-	}
+        BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
+        if !ok {
+                return nil, fmt.Errorf("no baseurl found")
+        }
+        AccountName, ok := os.LookupEnv("ULTRADNS_ACCOUNTNAME")
+        if !ok {
+                AccountName = ""
+        }
 
-	client, err := udnssdk.NewClient(Username, Password, BaseURL)
-	if err != nil {
+        client, err := udnssdk.NewClient(Username, Password, BaseURL)
+        if err != nil {
 
-		return nil, fmt.Errorf("Connection cannot be established")
-	}
+                return nil, fmt.Errorf("Connection cannot be established")
+        }
 
-	provider := &UltraDNSProvider{
-		client:       *client,
-		domainFilter: domainFilter,
-		DryRun:       dryRun,
-		AccountName:  AccountName,
-	}
+        provider := &UltraDNSProvider{
+                client:       *client,
+                domainFilter: domainFilter,
+                DryRun:       dryRun,
+                AccountName:  AccountName,
+        }
 
-	return provider, nil
+        return provider, nil
 }
 
 // Zones returns list of hosted zones
 func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
-	zoneKey := &udnssdk.ZoneKey{
-		AccountName: p.AccountName,
-	}
-	zones, err := p.fetchZones(ctx, zoneKey)
-	if err != nil {
-		return nil, err
-	}
+        zoneKey := &udnssdk.ZoneKey{
+                AccountName: p.AccountName,
+        }
+        zones, err := p.fetchZones(ctx, zoneKey)
+        if err != nil {
+                return nil, err
+        }
 
-	return zones, nil
+        return zones, nil
 }
 
 func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
-	var endpoints []*endpoint.Endpoint
-	zones, err := p.Zones(ctx)
-	if err != nil {
-		return nil, err
-	}
+        var endpoints []*endpoint.Endpoint
+        zones, err := p.Zones(ctx)
+        if err != nil {
+                return nil, err
+        }
 
-	log.Infof("zones : %v", zones)
+        log.Infof("zones : %v", zones)
 
-	for _, zone := range zones {
-		log.Infof("zones : %v", zone)
-		rrsetType := ""
-		ownerName := ""
-		rrsetKey := udnssdk.RRSetKey{
-			Zone: zone.Properties.Name,
-			Type: rrsetType,
-			Name: ownerName,
-		}
+        for _, zone := range zones {
+                log.Infof("zones : %v", zone)
+                rrsetType := ""
+                ownerName := ""
+                rrsetKey := udnssdk.RRSetKey{
+                        Zone: zone.Properties.Name,
+                        Type: rrsetType,
+                        Name: ownerName,
+                }
 
-		if zone.Properties.ResourceRecordCount != 0 {
-			records, err := p.fetchRecords(ctx, rrsetKey)
-			if err != nil {
-				return nil, err
-			}
+                if zone.Properties.ResourceRecordCount != 0 {
+                        records, err := p.fetchRecords(ctx, rrsetKey)
+                        if err != nil {
+                                return nil, err
+                        }
 
-			for _, r := range records {
-				recordTypeArray := strings.Fields(r.RRType)
-				if supportedRecordType(recordTypeArray[0]) {
-					log.Infof("owner name %s", r.OwnerName)
-					name := fmt.Sprintf("%s", r.OwnerName)
+                        for _, r := range records {
+                                recordTypeArray := strings.Fields(r.RRType)
+                                if supportedRecordType(recordTypeArray[0]) {
+                                        log.Infof("owner name %s", r.OwnerName)
+                                        name := fmt.Sprintf("%s", r.OwnerName)
 
-					// root name is identified by the empty string and should be
-					// translated to zone name for the endpoint entry.
-					if r.OwnerName == "" {
-						name = zone.Properties.Name
-					}
+                                        // root name is identified by the empty string and should be
+                                        // translated to zone name for the endpoint entry.
+                                        if r.OwnerName == "" {
+                                                name = zone.Properties.Name
+                                        }
 
-					endPointTTL := endpoint.NewEndpointWithTTL(name, recordTypeArray[0], endpoint.TTL(r.TTL), r.RData...)
-					endpoints = append(endpoints, endPointTTL)
-				}
-			}
-		}
+                                        endPointTTL := endpoint.NewEndpointWithTTL(name, recordTypeArray[0], endpoint.TTL(r.TTL), r.RData...)
+                                        endpoints = append(endpoints, endPointTTL)
+                                }
+                        }
+                }
 
-	}
-	log.Infof("endpoints %v", endpoints)
-	return endpoints, nil
+        }
+        log.Infof("endpoints %v", endpoints)
+        return endpoints, nil
 }
 
 func (p *UltraDNSProvider) fetchRecords(ctx context.Context, k udnssdk.RRSetKey) ([]udnssdk.RRSet, error) {
-	// TODO: Sane Configuration for timeouts / retries
-	maxerrs := 5
-	waittime := 5 * time.Second
+        // TODO: Sane Configuration for timeouts / retries
+        maxerrs := 5
+        waittime := 5 * time.Second
 
-	rrsets := []udnssdk.RRSet{}
-	errcnt := 0
-	offset := 0
-	limit := 1000
+        rrsets := []udnssdk.RRSet{}
+        errcnt := 0
+        offset := 0
+        limit := 1000
 
-	for {
-		reqRrsets, ri, res, err := p.client.RRSets.SelectWithOffsetWithLimit(k, offset, limit)
-		if err != nil {
-			if res != nil && res.StatusCode >= 500 {
-				errcnt = errcnt + 1
-				if errcnt < maxerrs {
-					time.Sleep(waittime)
-					continue
-				}
-			}
-			return rrsets, err
-		}
+        for {
+                reqRrsets, ri, res, err := p.client.RRSets.SelectWithOffsetWithLimit(k, offset, limit)
+                if err != nil {
+                        if res != nil && res.StatusCode >= 500 {
+                                errcnt = errcnt + 1
+                                if errcnt < maxerrs {
+                                        time.Sleep(waittime)
+                                        continue
+                                }
+                        }
+                        return rrsets, err
+                }
 
-		log.Printf("ResultInfo: %+v\n", ri)
-		for _, rrset := range reqRrsets {
-			rrsets = append(rrsets, rrset)
-		}
-		if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
-			return rrsets, nil
-		}
-		offset = ri.ReturnedCount + ri.Offset
-		continue
-	}
+                log.Printf("ResultInfo: %+v\n", ri)
+                for _, rrset := range reqRrsets {
+                        rrsets = append(rrsets, rrset)
+                }
+                if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
+                        return rrsets, nil
+                }
+                offset = ri.ReturnedCount + ri.Offset
+                continue
+        }
 }
 
 func (p *UltraDNSProvider) fetchZones(ctx context.Context, zoneKey *udnssdk.ZoneKey) ([]udnssdk.Zone, error) {
-	// Select will list the zone rrsets, paginating through all available results
-	// TODO: Sane Configuration for timeouts / retries
-	maxerrs := 5
-	waittime := 5 * time.Second
+        // Select will list the zone rrsets, paginating through all available results
+        // TODO: Sane Configuration for timeouts / retries
+        maxerrs := 5
+        waittime := 5 * time.Second
 
-	zones := []udnssdk.Zone{}
+        zones := []udnssdk.Zone{}
 
-	errcnt := 0
-	offset := 0
-	limit := 1000
+        errcnt := 0
+        offset := 0
+        limit := 1000
 
-	for {
-		reqZones, ri, res, err := p.client.Zone.SelectWithOffsetWithLimit(zoneKey, offset, limit)
-		if err != nil {
-			if res != nil && res.StatusCode >= 500 {
-				errcnt = errcnt + 1
-				if errcnt < maxerrs {
-					time.Sleep(waittime)
-					continue
-				}
-			}
-			return zones, err
-		}
+        for {
+                reqZones, ri, res, err := p.client.Zone.SelectWithOffsetWithLimit(zoneKey, offset, limit)
+                if err != nil {
+                        if res != nil && res.StatusCode >= 500 {
+                                errcnt = errcnt + 1
+                                if errcnt < maxerrs {
+                                        time.Sleep(waittime)
+                                        continue
+                                }
+                        }
+                        return zones, err
+                }
 
-		log.Printf("ResultInfo: %+v\n", ri)
-		for _, zone := range reqZones {
+                log.Printf("ResultInfo: %+v\n", ri)
+                for _, zone := range reqZones {
 
-			if p.domainFilter.IsConfigured() {
-				if p.domainFilter.Match(zone.Properties.Name) {
-					zones = append(zones, zone)
-				}
-			} else {
-				zones = append(zones, zone)
-			}
-		}
-		if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
-			return zones, nil
-		}
-		offset = ri.ReturnedCount + ri.Offset
-		continue
-	}
+                        if p.domainFilter.IsConfigured() {
+                                if p.domainFilter.Match(zone.Properties.Name) {
+                                        zones = append(zones, zone)
+                                }
+                        } else {
+                                zones = append(zones, zone)
+                        }
+                }
+                if ri.ReturnedCount+ri.Offset >= ri.TotalCount {
+                        return zones, nil
+                }
+                offset = ri.ReturnedCount + ri.Offset
+                continue
+        }
 }
 
 func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDNSChanges) error {
-	cnameownerName := "cname"
-	txtownerName := "txt"
-	if len(changes) == 0 {
-		log.Infof("All records are already up to date")
-		return nil
-	}
+        cnameownerName := "cname"
+        txtownerName := "txt"
+        if len(changes) == 0 {
+                log.Infof("All records are already up to date")
+                return nil
+        }
 
-	zones, err := p.Zones(ctx)
-	if err != nil {
-		return err
-	}
-	zoneChanges := seperateChangeByZone(zones, changes)
+        zones, err := p.Zones(ctx)
+        if err != nil {
+                return err
+        }
+        zoneChanges := seperateChangeByZone(zones, changes)
 
-	for zoneName, changes := range zoneChanges {
+        for zoneName, changes := range zoneChanges {
 
-		for _, change := range changes {
+                for _, change := range changes {
 
-			if change.ResourceRecordSetUltraDNS.RRType == "CNAME" {
-				cnameownerName = change.ResourceRecordSetUltraDNS.OwnerName
-			} else if change.ResourceRecordSetUltraDNS.RRType == "TXT" {
-				txtownerName = change.ResourceRecordSetUltraDNS.OwnerName
-			}
+                        if change.ResourceRecordSetUltraDNS.RRType == "CNAME" {
+                                cnameownerName = change.ResourceRecordSetUltraDNS.OwnerName
+                        } else if change.ResourceRecordSetUltraDNS.RRType == "TXT" {
+                                txtownerName = change.ResourceRecordSetUltraDNS.OwnerName
+                        }
 
-			if cnameownerName == txtownerName {
-				rrsetKey := udnssdk.RRSetKey{
-					Zone: zoneName,
-					Type: endpoint.RecordTypeCNAME,
-					Name: change.ResourceRecordSetUltraDNS.OwnerName,
-				}
-				err := p.getSpecificRecord(ctx, rrsetKey)
-				if err != nil {
-					return err
-				}
+                        if cnameownerName == txtownerName {
+                                rrsetKey := udnssdk.RRSetKey{
+                                        Zone: zoneName,
+                                        Type: endpoint.RecordTypeCNAME,
+                                        Name: change.ResourceRecordSetUltraDNS.OwnerName,
+                                }
+                                err := p.getSpecificRecord(ctx, rrsetKey)
+                                if err != nil {
+                                        return err
+                                }
 
-				_, err = p.client.RRSets.Delete(rrsetKey)
-				if err != nil {
-					return err
-				}
-				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
-			}
-			rrsetKey := udnssdk.RRSetKey{
-				Zone: zoneName,
-				Type: change.ResourceRecordSetUltraDNS.RRType,
-				Name: change.ResourceRecordSetUltraDNS.OwnerName,
-			}
-			record := udnssdk.RRSet{}
-			if change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" {
-				if change.Action == "CREATE" {
-					rdPoolObject := udnssdk.RDPoolProfile{
-						Context:  string("http://schemas.ultradns.com/RDPool.jsonschema"),
-						Order:       "ROUND_ROBIN",
-						Description: change.ResourceRecordSetUltraDNS.OwnerName,
-					}
-					record = udnssdk.RRSet{
-						RRType:    change.ResourceRecordSetUltraDNS.RRType,
-						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-						RData:     change.ResourceRecordSetUltraDNS.RData,
-						TTL:       change.ResourceRecordSetUltraDNS.TTL,
-						Profile:   rdPoolObject.RawProfile(),
-					}
-				} else if change.Action == "UPDATE" {
-					emptyRDPool := udnssdk.RDPoolProfile{}
-					rdPool, _ := p.getRdPoolDetails(rrsetKey)
-					if emptyRDPool == rdPool {
-						log.Infof("in empty rdpool loop")
-						rdPoolObject := udnssdk.RDPoolProfile{
-							Context:     string("http://schemas.ultradns.com/RDPool.jsonschema"),
-							Order:       "ROUND_ROBIN",
-							Description: change.ResourceRecordSetUltraDNS.OwnerName,
-						}
-						record = udnssdk.RRSet{
-							RRType:    change.ResourceRecordSetUltraDNS.RRType,
-							OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-							RData:     change.ResourceRecordSetUltraDNS.RData,
-							TTL:       change.ResourceRecordSetUltraDNS.TTL,
-							Profile:   rdPoolObject.RawProfile(),
-						}
-					} else {
-						log.Infof("in non empty rdpool loop %+v",rdPool)
-						rdPoolObject := udnssdk.RDPoolProfile{
-							Context:     rdPool.Context,
-							Order:       rdPool.Order,
-							Description: change.ResourceRecordSetUltraDNS.OwnerName,
-						}
-						record = udnssdk.RRSet{
-							RRType:    change.ResourceRecordSetUltraDNS.RRType,
-							OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-							RData:     change.ResourceRecordSetUltraDNS.RData,
-							TTL:       change.ResourceRecordSetUltraDNS.TTL,
-							Profile:   rdPoolObject.RawProfile(),
-						}
-					}
-				}
-			} else {
-				record = udnssdk.RRSet{
-					RRType:    change.ResourceRecordSetUltraDNS.RRType,
-					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-					RData:     change.ResourceRecordSetUltraDNS.RData,
-					TTL:       change.ResourceRecordSetUltraDNS.TTL,
-				}
-			}
+                                _, err = p.client.RRSets.Delete(rrsetKey)
+                                if err != nil {
+                                        return err
+                                }
+                                return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
+                        }
+                        rrsetKey := udnssdk.RRSetKey{
+                                Zone: zoneName,
+                                Type: change.ResourceRecordSetUltraDNS.RRType,
+                                Name: change.ResourceRecordSetUltraDNS.OwnerName,
+                        }
+                        record := udnssdk.RRSet{}
+                        if change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" {
+                                if change.Action == "CREATE" {
+                                        rdPoolObject := udnssdk.RDPoolProfile{
+                                                Context:  udnssdk.RDPoolSchema,
+                                                Order:       "ROUND_ROBIN",
+                                                Description: change.ResourceRecordSetUltraDNS.OwnerName,
+                                        }
+                                        record = udnssdk.RRSet{
+                                                RRType:    change.ResourceRecordSetUltraDNS.RRType,
+                                                OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+                                                RData:     change.ResourceRecordSetUltraDNS.RData,
+                                                TTL:       change.ResourceRecordSetUltraDNS.TTL,
+                                                Profile:   rdPoolObject.RawProfile(),
+                                        }
+                                } else if change.Action == "UPDATE" {
+                                        emptyRDPool := udnssdk.RDPoolProfile{}
+                                        rdPool, _ := p.getRdPoolDetails(rrsetKey)
+                                        if emptyRDPool == rdPool {
+                                                log.Infof("in empty rdpool loop")
+                                                rdPoolObject := udnssdk.RDPoolProfile{
+                                                        Context:     udnssdk.RDPoolSchema,
+                                                        Order:       "ROUND_ROBIN",
+                                                        Description: change.ResourceRecordSetUltraDNS.OwnerName,
+                                                }
+                                                record = udnssdk.RRSet{
+                                                        RRType:    change.ResourceRecordSetUltraDNS.RRType,
+                                                        OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+                                                        RData:     change.ResourceRecordSetUltraDNS.RData,
+                                                        TTL:       change.ResourceRecordSetUltraDNS.TTL,
+                                                        Profile:   rdPoolObject.RawProfile(),
+                                                }
+                                        } else {
+                                                log.Infof("in non empty rdpool loop %+v",rdPool)
+                                                rdPoolObject := udnssdk.RDPoolProfile{
+                                                        Context:     rdPool.Context,
+                                                        Order:       rdPool.Order,
+                                                        Description: change.ResourceRecordSetUltraDNS.OwnerName,
+                                                }
+                                                record = udnssdk.RRSet{
+                                                        RRType:    change.ResourceRecordSetUltraDNS.RRType,
+                                                        OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+                                                        RData:     change.ResourceRecordSetUltraDNS.RData,
+                                                        TTL:       change.ResourceRecordSetUltraDNS.TTL,
+                                                        Profile:   rdPoolObject.RawProfile(),
+                                                }
+                                        }
+                                }
+                        } else {
+                                record = udnssdk.RRSet{
+                                        RRType:    change.ResourceRecordSetUltraDNS.RRType,
+                                        OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+                                        RData:     change.ResourceRecordSetUltraDNS.RData,
+                                        TTL:       change.ResourceRecordSetUltraDNS.TTL,
+                                }
+                        }
 
-			log.WithFields(log.Fields{
-				"record":  change.ResourceRecordSetUltraDNS.OwnerName,
-				"type":    change.ResourceRecordSetUltraDNS.RRType,
-				"ttl":     change.ResourceRecordSetUltraDNS.TTL,
-				"action":  change.Action,
-				"zone":    zoneName,
-				"profile": change.ResourceRecordSetUltraDNS.Profile,
-			}).Info("Changing record.")
+                        log.WithFields(log.Fields{
+                                "record":  change.ResourceRecordSetUltraDNS.OwnerName,
+                                "type":    change.ResourceRecordSetUltraDNS.RRType,
+                                "ttl":     change.ResourceRecordSetUltraDNS.TTL,
+                                "action":  change.Action,
+                                "zone":    zoneName,
+                                "profile": change.ResourceRecordSetUltraDNS.Profile,
+                        }).Info("Changing record.")
 
-			switch change.Action {
-			case ultradnsCreate:
-				res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
-				_ = res
-				if err != nil {
-					return err
-				}
+                        switch change.Action {
+                        case ultradnsCreate:
+                                res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
+                                _ = res
+                                if err != nil {
+                                        return err
+                                }
 
-			case ultradnsDelete:
-				err := p.getSpecificRecord(ctx, rrsetKey)
-				if err != nil {
-					return err
-				}
+                        case ultradnsDelete:
+                                err := p.getSpecificRecord(ctx, rrsetKey)
+                                if err != nil {
+                                        return err
+                                }
 
-				_, err = p.client.RRSets.Delete(rrsetKey)
-				if err != nil {
-					return err
-				}
+                                _, err = p.client.RRSets.Delete(rrsetKey)
+                                if err != nil {
+                                        return err
+                                }
 
-			case ultradnsUpdate:
-				err := p.getSpecificRecord(ctx, rrsetKey)
-				if err != nil {
-					return err
-				}
-				_, err = p.client.RRSets.Update(rrsetKey, record)
-				if err != nil {
-					return err
-				}
-			}
-		}
-	}
+                        case ultradnsUpdate:
+                                err := p.getSpecificRecord(ctx, rrsetKey)
+                                if err != nil {
+                                        return err
+                                }
+                                _, err = p.client.RRSets.Update(rrsetKey, record)
+                                if err != nil {
+                                        return err
+                                }
+                        }
+                }
+        }
 
-	return nil
+        return nil
 }
 
 func (p *UltraDNSProvider) ApplyChanges(ctx context.Context, changes *plan.Changes) error {
-	combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
-	log.Infof("value of changes %v,%v,%v", changes.Create, changes.UpdateNew, changes.Delete)
-	combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
-	combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsUpdate, changes.UpdateNew)...)
-	combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsDelete, changes.Delete)...)
+        combinedChanges := make([]*UltraDNSChanges, 0, len(changes.Create)+len(changes.UpdateNew)+len(changes.Delete))
+        log.Infof("value of changes %v,%v,%v", changes.Create, changes.UpdateNew, changes.Delete)
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsCreate, changes.Create)...)
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsUpdate, changes.UpdateNew)...)
+        combinedChanges = append(combinedChanges, newUltraDNSChanges(ultradnsDelete, changes.Delete)...)
 
-	return p.submitChanges(ctx, combinedChanges)
+        return p.submitChanges(ctx, combinedChanges)
 }
 
 func newUltraDNSChanges(action string, endpoints []*endpoint.Endpoint) []*UltraDNSChanges {
-	changes := make([]*UltraDNSChanges, 0, len(endpoints))
-	ttl := ultradnsDefaultTTL
-	for _, e := range endpoints {
+        changes := make([]*UltraDNSChanges, 0, len(endpoints))
+        ttl := ultradnsDefaultTTL
+        for _, e := range endpoints {
 
-		if e.RecordTTL.IsConfigured() {
-			ttl = int(e.RecordTTL)
-		}
+                if e.RecordTTL.IsConfigured() {
+                        ttl = int(e.RecordTTL)
+                }
 
-		// Adding suffix dot to the record name
-		recordName := fmt.Sprintf("%s.", e.DNSName)
-		change := &UltraDNSChanges{
-			Action: action,
-			ResourceRecordSetUltraDNS: udnssdk.RRSet{
-				RRType:    e.RecordType,
-				OwnerName: recordName,
-				RData:     e.Targets,
-				TTL:       ttl,
-			},
-		}
-		changes = append(changes, change)
-	}
-	return changes
+                // Adding suffix dot to the record name
+                recordName := fmt.Sprintf("%s.", e.DNSName)
+                change := &UltraDNSChanges{
+                        Action: action,
+                        ResourceRecordSetUltraDNS: udnssdk.RRSet{
+                                RRType:    e.RecordType,
+                                OwnerName: recordName,
+                                RData:     e.Targets,
+                                TTL:       ttl,
+                        },
+                }
+                changes = append(changes, change)
+        }
+        return changes
 }
 
 func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[string][]*UltraDNSChanges {
-	change := make(map[string][]*UltraDNSChanges)
-	zoneNameID := zoneIDName{}
-	for _, z := range zones {
-		zoneNameID.Add(z.Properties.Name, z.Properties.Name)
-		change[z.Properties.Name] = []*UltraDNSChanges{}
-	}
+        change := make(map[string][]*UltraDNSChanges)
+        zoneNameID := zoneIDName{}
+        for _, z := range zones {
+                zoneNameID.Add(z.Properties.Name, z.Properties.Name)
+                change[z.Properties.Name] = []*UltraDNSChanges{}
+        }
 
-	for _, c := range changes {
-		log.Infof("owner Name: %s", c.ResourceRecordSetUltraDNS.OwnerName)
-		zone, _ := zoneNameID.FindZone(c.ResourceRecordSetUltraDNS.OwnerName)
-		if zone == "" {
-			log.Infof("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSetUltraDNS.OwnerName)
-			continue
-		}
-		change[zone] = append(change[zone], c)
+        for _, c := range changes {
+                log.Infof("owner Name: %s", c.ResourceRecordSetUltraDNS.OwnerName)
+                zone, _ := zoneNameID.FindZone(c.ResourceRecordSetUltraDNS.OwnerName)
+                if zone == "" {
+                        log.Infof("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSetUltraDNS.OwnerName)
+                        continue
+                }
+                change[zone] = append(change[zone], c)
 
-	}
-	return change
+        }
+        return change
 }
 
 func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey) (err error) {
-	_, err = p.client.RRSets.Select(rrsetKey)
-	if err != nil {
-		return fmt.Errorf("no record was found")
-	} else {
-		return nil
-	}
+        _, err = p.client.RRSets.Select(rrsetKey)
+        if err != nil {
+                return fmt.Errorf("no record was found")
+        } else {
+                return nil
+        }
 }
 
 func (p *UltraDNSProvider) getRdPoolDetails(k udnssdk.RRSetKey) (rdPool udnssdk.RDPoolProfile, err error) {
-	rrsets, err := p.client.RRSets.Select(k)
-	if err != nil {
-		return udnssdk.RDPoolProfile{},fmt.Errorf("no record was found")
-	} else {
-		log.Infof("RD Pool details,%+v",rrsets[0].Profile)
-		if len(rrsets[0].Profile) != 0{
-			rdPoolObject,_ := rrsets[0].Profile.GetProfileObject()
-			log.Infof("type of %v",reflect.TypeOf(rdPoolObject))
-			log.Infof("type of %v",reflect.TypeOf(udnssdk.RDPoolProfile{}))
-			if reflect.TypeOf(rdPoolObject) == reflect.TypeOf(udnssdk.RDPoolProfile{}) {
-				return rdPoolObject.(udnssdk.RDPoolProfile), nil
-			} else {
-				log.Infof("No RD Pool found for rrset %v", rrsets)
-				return udnssdk.RDPoolProfile{}, nil
-			}
-		}else {
-			log.Infof("No pool found")
-			return udnssdk.RDPoolProfile{}, nil
-		}
+        rrsets, err := p.client.RRSets.Select(k)
+        if err != nil {
+                return udnssdk.RDPoolProfile{},fmt.Errorf("no record was found")
+        } else {
+                log.Infof("RD Pool details,%+v",rrsets[0].Profile)
+                if len(rrsets[0].Profile) != 0{
+                        rdPoolObject,_ := rrsets[0].Profile.GetProfileObject()
+                        log.Infof("type of %v",reflect.TypeOf(rdPoolObject))
+                        log.Infof("type of %v",reflect.TypeOf(udnssdk.RDPoolProfile{}))
+                        if reflect.TypeOf(rdPoolObject) == reflect.TypeOf(udnssdk.RDPoolProfile{}) {
+                                return rdPoolObject.(udnssdk.RDPoolProfile), nil
+                        } else {
+                                log.Infof("No RD Pool found for rrset %v", rrsets)
+                                return udnssdk.RDPoolProfile{}, nil
+                        }
+                }else {
+                        log.Infof("No pool found")
+                        return udnssdk.RDPoolProfile{}, nil
+                }
 
-	}
+        }
 }
+
