@@ -339,7 +339,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 
                         switch change.Action {
                         case ultradnsCreate:
-                                res, err := p.client.RRSets.Create(rrsetKey, change.ResourceRecordSetUltraDNS)
+                                res, err := p.client.RRSets.Create(rrsetKey,record)
                                 _ = res
                                 if err != nil {
                                         return err
