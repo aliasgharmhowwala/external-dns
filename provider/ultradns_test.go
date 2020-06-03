@@ -268,62 +268,144 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			t.Errorf("should not fail, %s", err)
 		}
 
-                changes = &plan.Changes{}
+		changes = &plan.Changes{}
 		changes.UpdateNew = []*endpoint.Endpoint{
-					{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100},
-					{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100}}
+			{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100},
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100}}
 		err = provider.ApplyChanges(context.Background(), changes)
 		if err != nil {
 			t.Errorf("should not fail, %s", err)
 		}
 
-                changes = &plan.Changes{}
+		changes = &plan.Changes{}
 		changes.Delete = []*endpoint.Endpoint{
-				{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100},
-				{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100},
+			{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2"}, RecordType: "A", RecordTTL: 100}}
 
-                err = provider.ApplyChanges(context.Background(), changes)
-                if err != nil {
-                        t.Errorf("should not fail, %s", err)
-                }
-	
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err != nil {
+			t.Errorf("should not fail, %s", err)
+		}
+
 	}
 
 }
 
 // This will work if you would set the environment variables such as "ULTRADNS_INTEGRATION" and zone should be avaialble "kubernetes-ultradns-provider-test.com" for multiple target
 func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T) {
-        _, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
-        if !ok {
-                log.Printf("Skipping test")
+	_, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
+	if !ok {
+		log.Printf("Skipping test")
 
-        } else {
+	} else {
 
-                provider, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"kubernetes-ultradns-provider-test.com"}), false)
-                changes := &plan.Changes{}
-                changes.Create = []*endpoint.Endpoint{
-                        {DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.1.1","1.1.2.2"}, RecordType: "A"}}
+		provider, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"kubernetes-ultradns-provider-test.com"}), false)
+		changes := &plan.Changes{}
+		changes.Create = []*endpoint.Endpoint{
+			{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.1.1", "1.1.2.2"}, RecordType: "A"}}
 
-		
-                err = provider.ApplyChanges(context.Background(), changes)
-                if err != nil {
-                        t.Errorf("should not fail, %s", err)
-                }
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err != nil {
+			t.Errorf("should not fail, %s", err)
+		}
 
-                changes = &plan.Changes{}
-                changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
+		changes = &plan.Changes{}
+		changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
 
-		
-                err = provider.ApplyChanges(context.Background(), changes)
-                if err != nil {
-                        t.Errorf("should not fail, %s", err)
-                }
-                changes = &plan.Changes{}
-                changes.Delete = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A"}}
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err != nil {
+			t.Errorf("should not fail, %s", err)
+		}
+		changes = &plan.Changes{}
+		changes.Delete = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A"}}
 
-                err = provider.ApplyChanges(context.Background(), changes)
-                if err != nil {
-                        t.Errorf("should not fail, %s", err)
-                }
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err != nil {
+			t.Errorf("should not fail, %s", err)
+		}
+	}
+}
+
+func TestUltraDNSProvider_newSBPoolObjectCreation(t *testing.T) {
+	mocked := mockUltraDNSRecord{nil}
+	mockedDomain := mockUltraDNSZone{nil}
+
+	provider := &UltraDNSProvider{
+		client: udnssdk.Client{
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
+		},
+	}
+	changes = &plan.Changes{}
+	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com.", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
+	changesList := provider.newUltraDNSChanges("UPDATE", changes)
+	for _, _ = range changesList[0].ResourceRecordSetUltraDNS.RData {
+
+		rrdataInfo := udnssdk.SBRDataInfo{
+			RunProbes: true,
+			Priority:  1,
+			State:     "NORMAL",
+			Threshold: 1,
+			Weight:    nil,
+		}
+		sbpoolRDataList = append(sbpoolRDataList, rrdataInfo)
+	}
+	sbPoolObject := udnssdk.SBPoolProfile{
+		Context:     udnssdk.SBPoolSchema,
+		Order:       "ROUND_ROBIN",
+		Description: "kubernetes-ultradns-provider-test.com.",
+		MaxActive:   2,
+		MaxServed:   2,
+		RDataInfo:   sbpoolRDataList,
+		RunProbes:   true,
+		ActOnProbes: true,
+	}
+
+	actualSBPoolObject, _ := newSBPoolObjectCreation(context.Background(), changesList[0])
+	assert.Equal(t, sbPoolObject, actualSBPoolObject)
+
+}
+
+//Testcase to check fail scenario for multiple AAAA targets
+func TestUltraDNSProvider_MultipleTargetAAAA(t *testing.T) {
+	mocked := mockUltraDNSRecord{nil}
+	mockedDomain := mockUltraDNSZone{nil}
+
+	provider := &UltraDNSProvider{
+		client: udnssdk.Client{
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
+		},
+	}
+
+	changes := &plan.Changes{}
+	changes.Create = []*endpoint.Endpoint{
+		{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100},
+	}
+	err = provider.ApplyChanges(context.Background(), changes)
+	if err == nil {
+		t.Errorf("We wanted it to fail since multiple AAAA targets are not allowed")
+	}
+}
+
+func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
+	_, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
+	if !ok {
+		log.Printf("Skipping test")
+
+	} else {
+		provider, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"kubernetes-ultradns-provider-test.com"}), false)
+		changes := &plan.Changes{}
+
+		changes.Create = []*endpoint.Endpoint{
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"nginx.loadbalancer.com.","nginx1.loadbalancer.com."}, RecordType: "CNAME", RecordTTL: 100},
+		}
+		err = provider.ApplyChanges(context.Background(), changes)
+		if err == nil {
+			t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
+		}
+	}
+	if err == nil {
+		t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
 	}
 }
