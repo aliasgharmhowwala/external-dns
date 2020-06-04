@@ -113,7 +113,6 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 		return nil, err
 	}
 
-	log.Infof("zones : %v", zones)
 
 	for _, zone := range zones {
 		log.Infof("zones : %v", zone)
@@ -290,8 +289,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				}
 			} else if change.ResourceRecordSetUltraDNS.RRType == "AAAA" && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
 
-				log.Errorf("We do not support AAAA records in SB Pool please contact to Neustar for further details")
-				return err
+				return fmt.Errorf("We do not support Multiple target AAAA records in SB Pool please contact to Neustar for further details")
 
 			} else {
 				record = udnssdk.RRSet{
@@ -396,7 +394,6 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 	}
 
 	for _, c := range changes {
-		log.Infof("owner Name: %s", c.ResourceRecordSetUltraDNS.OwnerName)
 		zone, _ := zoneNameID.FindZone(c.ResourceRecordSetUltraDNS.OwnerName)
 		if zone == "" {
 			log.Infof("Skipping record %s because no hosted zone matching record DNS Name was detected", c.ResourceRecordSetUltraDNS.OwnerName)
@@ -411,7 +408,7 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey) (err error) {
 	_, err = p.client.RRSets.Select(rrsetKey)
 	if err != nil {
-		return fmt.Errorf("no record was found")
+		return fmt.Errorf("no record was found for %v",rrsetKey)
 	} else {
 		return nil
 	}

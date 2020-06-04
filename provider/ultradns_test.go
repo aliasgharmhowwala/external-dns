@@ -336,10 +336,20 @@ func TestUltraDNSProvider_newSBPoolObjectCreation(t *testing.T) {
 			Zone:   &mockedDomain,
 		},
 	}
-	changes = &plan.Changes{}
+	sbpoolRDataList := []udnssdk.SBRDataInfo{}
+	changes := &plan.Changes{}
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com.", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
-	changesList := provider.newUltraDNSChanges("UPDATE", changes)
-	for _, _ = range changesList[0].ResourceRecordSetUltraDNS.RData {
+	changesList := &UltraDNSChanges{
+                        Action:"UPDATE" ,
+                        ResourceRecordSetUltraDNS: udnssdk.RRSet{
+                                RRType:    "A",
+                                OwnerName: "kubernetes-ultradns-provider-test.com.",
+                                RData:     []string{"1.1.2.2","192.168.0.24"},
+                                TTL:       100,
+                        },
+                }
+
+	for _, _ = range changesList.ResourceRecordSetUltraDNS.RData {
 
 		rrdataInfo := udnssdk.SBRDataInfo{
 			RunProbes: true,
@@ -361,30 +371,28 @@ func TestUltraDNSProvider_newSBPoolObjectCreation(t *testing.T) {
 		ActOnProbes: true,
 	}
 
-	actualSBPoolObject, _ := newSBPoolObjectCreation(context.Background(), changesList[0])
+	actualSBPoolObject, _ := provider.newSBPoolObjectCreation(context.Background(), changesList)
 	assert.Equal(t, sbPoolObject, actualSBPoolObject)
 
 }
 
 //Testcase to check fail scenario for multiple AAAA targets
 func TestUltraDNSProvider_MultipleTargetAAAA(t *testing.T) {
-	mocked := mockUltraDNSRecord{nil}
-	mockedDomain := mockUltraDNSZone{nil}
+	_, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
+	if !ok {
+		log.Printf("Skipping test")
 
-	provider := &UltraDNSProvider{
-		client: udnssdk.Client{
-			RRSets: &mocked,
-			Zone:   &mockedDomain,
-		},
-	}
+	} else {
 
-	changes := &plan.Changes{}
-	changes.Create = []*endpoint.Endpoint{
-		{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100},
-	}
-	err = provider.ApplyChanges(context.Background(), changes)
-	if err == nil {
-		t.Errorf("We wanted it to fail since multiple AAAA targets are not allowed")
+		provider, _ := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"kubernetes-ultradns-provider-test.com"}), false)
+		changes := &plan.Changes{}
+		changes.Create = []*endpoint.Endpoint{
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"2001:0db8:85a3:0000:0000:8a2e:0370:7334", "2001:0db8:85a3:0000:0000:8a2e:0370:7335"}, RecordType: "AAAA", RecordTTL: 100},
+		}
+		err := provider.ApplyChanges(context.Background(), changes)
+		if err == nil {
+			t.Errorf("We wanted it to fail since multiple AAAA targets are not allowed")
+		}
 	}
 }
 
@@ -404,8 +412,5 @@ func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
 		if err == nil {
 			t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
 		}
-	}
-	if err == nil {
-		t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
 	}
 }
