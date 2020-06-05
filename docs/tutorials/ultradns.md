@@ -7,7 +7,7 @@ Make sure to use **>=0.6** version of ExternalDNS for this tutorial.
 ## Managing DNS with UltraDNS
 
 If you want to read up on UltraDNS service you can read the following tutorial: 
-[Introduction to UltraDNS DNS]()
+[Introduction to UltraDNS DNS](https://docs.ultradns.neustar)
 
 Create a new DNS Zone where you want to create your records in. For the examples we will be using `example.com`
 
@@ -21,6 +21,7 @@ Connect your `kubectl` client to the cluster you want to test ExternalDNS with.
 Then apply one of the following manifests file to deploy ExternalDNS.
 
 - Note: We are assuming the domain is already present at UltraDNS
+- Note: While creating CNAMES as target endpoints we require to use `--txt-prefix` option
 ### Manifest (for clusters without RBAC enabled)
 
 ```yaml
@@ -44,12 +45,12 @@ spec:
         image: registry.opensource.zalan.do/teapot/external-dns:latest
         args:
         - --source=service # ingress is also possible
-        - --domain-filter=example.com # (optional) limit to only example.com domains; change to match the zone created above.
+        - --domain-filter=example.com # (Recommended) We recommend to use this filter as it minimize the time to propagate changes, as there are less number of zones to look into..
         - --provider=ultradns
         env:
         - name: ULTRADNS_USERNAME
           value: ""
-        - name: ULTRADNS_PASSWORD
+        - name: ULTRADNS_PASSWORD  # The password is required to be BASE64 encrypted.
           value: ""
         - name: ULTRADNS_BASEURL
           value: "https://api.ultradns.com/"
@@ -113,13 +114,14 @@ spec:
       - name: external-dns
         image: registry.opensource.zalan.do/teapot/external-dns:latest
         args:
-        - --source=service # ingress is also possible
-        - --domain-filter=example.com # (optional) limit to only example.com domains; change to match the zone created above.
+        - --source=service 
+        - --source=ingress
+        - --domain-filter=example.com #(Recommended) We recommend to use this filter as it minimize the time to propagate changes, as there are less number of zones to look into..
         - --provider=ultradns
         env:
         - name: ULTRADNS_USERNAME
           value: ""
-        - name: ULTRADNS_PASSWORD
+        - name: ULTRADNS_PASSWORD # The password is required to be BASE64 encrypted.
           value: ""
         - name: ULTRADNS_BASEURL
           value: "https://api.ultradns.com/"
@@ -184,11 +186,14 @@ Once the service has an external IP assigned, ExternalDNS will notice the new se
 
 ## Verifying UltraDNS DNS records
 
-Check your [UltraDNS UI](https://portal.ultradns.net/) to view the records for your UltraDNS DNS zone.
+Check your [UltraDNS UI](https://portal.ultradns.neustar) to view the records for your UltraDNS DNS zone.
 
 Click on the zone for the one created above if a different domain was used.
 
 This should show the external IP address of the service as the A record for your domain.
+
+## Test Scenarios
+- <TBA> As per demo feedback
 
 ## Cleanup
 
