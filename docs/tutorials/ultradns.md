@@ -193,7 +193,7 @@ Click on the zone for the one created above if a different domain was used.
 This should show the external IP address of the service as the A record for your domain.
 
 ## Test Scenarios
-- <TBA> As per demo feedback
+- TBA (As per demo feedback)
 
 ## Cleanup
 
