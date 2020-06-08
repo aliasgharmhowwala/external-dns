@@ -20,6 +20,8 @@ import (
 	"strings"
 	"time"
 
+	"encoding/base64"
+
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/external-dns/endpoint"
@@ -35,6 +37,8 @@ const (
 	sbPoolOrder        = "ROUND_ROBIN"
 	sbPoolRunProbes    = true
 	sbPoolActOnProbes  = true
+	ultradnsPoolType   = "rdpool"
+	rdPoolOrder        = "ROUND_ROBIN"
 )
 
 type UltraDNSProvider struct {
@@ -58,9 +62,16 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		return nil, fmt.Errorf("no username found")
 	}
 
-	Password, ok := os.LookupEnv("ULTRADNS_PASSWORD")
+	Base64Password, ok := os.LookupEnv("ULTRADNS_PASSWORD")
 	if !ok {
 		return nil, fmt.Errorf("no password found")
+	}
+
+	// Base64 Standard Decoding
+	Password, err := base64.StdEncoding.DecodeString(Base64Password)
+	if err != nil {
+		fmt.Printf("Error decoding string: %s ", err.Error())
+		return err
 	}
 
 	BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
@@ -70,6 +81,32 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 	AccountName, ok := os.LookupEnv("ULTRADNS_ACCOUNTNAME")
 	if !ok {
 		AccountName = ""
+	}
+
+	probeValue, ok := os.LookUpEnv("ULTRADNS_PROBE_TOGGLE")
+	if ok {
+		if (probeValue != true) && (probeValue != false) {
+			return nil, fmt.Errorf("please set proper probe value, the values can be either true or false")
+		} else {
+			sbPoolRunProbes = probeValue
+		}
+	}
+
+	actOnProbeValue, ok := os.LookUpEnv("ULTRADNS_ACTONPROBE_TOGGLE")
+	if ok {
+		if (actOnProbeValue != true) && (actOnProbeValue != false) {
+			return nil, fmt.Errorf("please set proper act on probe value, the values can be either true or false")
+		} else {
+			sbPoolActOnProbes = actOnProbeValue
+		}
+	}
+
+	poolValue, ok := os.LookUpEnv("ULTRADNS_POOL_TYPE")
+	if ok {
+		if (poolValue != "sbpool") && (poolValue != "rdpool") {
+			return nil, fmt.Errorf(" please set proper ULTRADNS_POOL_TYPE, supported types are sbpool or rdpool")
+		}
+		ultradnsPoolType = poolValue
 	}
 
 	client, err := udnssdk.NewClient(Username, Password, BaseURL)
@@ -112,7 +149,6 @@ func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, e
 	if err != nil {
 		return nil, err
 	}
-
 
 	for _, zone := range zones {
 		log.Infof("zones : %v", zone)
@@ -270,7 +306,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 						return err
 					}
 				}
-				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=\"\"")
+				return fmt.Errorf("The CNAME and TXT Record name cannot be same please recreate external-dns with - --txt-prefix=")
 			}
 			rrsetKey := udnssdk.RRSetKey{
 				Zone: zoneName,
@@ -279,14 +315,26 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 			}
 			record := udnssdk.RRSet{}
 			if change.ResourceRecordSetUltraDNS.RRType == "A" && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
-				sbPoolObject, _ := p.newSBPoolObjectCreation(ctx, change)
-				record = udnssdk.RRSet{
-					RRType:    change.ResourceRecordSetUltraDNS.RRType,
-					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
-					RData:     change.ResourceRecordSetUltraDNS.RData,
-					TTL:       change.ResourceRecordSetUltraDNS.TTL,
-					Profile:   sbPoolObject.RawProfile(),
+				if ultradnsPoolType == "sbpool" {
+					sbPoolObject, _ := p.newSBPoolObjectCreation(ctx, change)
+					record = udnssdk.RRSet{
+						RRType:    change.ResourceRecordSetUltraDNS.RRType,
+						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+						RData:     change.ResourceRecordSetUltraDNS.RData,
+						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+						Profile:   sbPoolObject.RawProfile(),
+					}
+				} else if ultradnsPoolType == "rdpool" {
+					rdPoolObject, _ := p.newRDPoolObjectCreation(ctx, change)
+					record = udnssdk.RRSet{
+						RRType:    change.ResourceRecordSetUltraDNS.RRType,
+						OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
+						RData:     change.ResourceRecordSetUltraDNS.RData,
+						TTL:       change.ResourceRecordSetUltraDNS.TTL,
+						Profile:   rdPoolObject.RawProfile(),
+					}
 				}
+
 			} else if change.ResourceRecordSetUltraDNS.RRType == "AAAA" && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
 
 				return fmt.Errorf("We do not support Multiple target AAAA records in SB Pool please contact to Neustar for further details")
@@ -301,12 +349,12 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 			}
 
 			log.WithFields(log.Fields{
-				"record":  change.ResourceRecordSetUltraDNS.OwnerName,
-				"type":    change.ResourceRecordSetUltraDNS.RRType,
-				"ttl":     change.ResourceRecordSetUltraDNS.TTL,
+				"record":  record.OwnerName,
+				"type":    record.RRType,
+				"ttl":     record.TTL,
 				"action":  change.Action,
 				"zone":    zoneName,
-				"profile": change.ResourceRecordSetUltraDNS.Profile,
+				"profile": record.Profile,
 			}).Info("Changing record.")
 
 			switch change.Action {
@@ -408,12 +456,13 @@ func seperateChangeByZone(zones []udnssdk.Zone, changes []*UltraDNSChanges) map[
 func (p *UltraDNSProvider) getSpecificRecord(ctx context.Context, rrsetKey udnssdk.RRSetKey) (err error) {
 	_, err = p.client.RRSets.Select(rrsetKey)
 	if err != nil {
-		return fmt.Errorf("no record was found for %v",rrsetKey)
+		return fmt.Errorf("no record was found for %v", rrsetKey)
 	} else {
 		return nil
 	}
 }
 
+// Creation of SBPoolObject
 func (p *UltraDNSProvider) newSBPoolObjectCreation(ctx context.Context, change *UltraDNSChanges) (sbPool udnssdk.SBPoolProfile, err error) {
 
 	sbpoolRDataList := []udnssdk.SBRDataInfo{}
@@ -439,4 +488,15 @@ func (p *UltraDNSProvider) newSBPoolObjectCreation(ctx context.Context, change *
 		ActOnProbes: sbPoolActOnProbes,
 	}
 	return sbPoolObject, nil
+}
+
+//Creation of RDPoolObject
+func (p *UltraDNSProvider) newRDPoolCreation(ctx context.Context, change *UltraDNSChanges) (rdPool udnssdk.PoolProfile, err error) {
+
+	rdPoolObject := udnssdk.SBPoolProfile{
+		Context:     udnssdk.RDPoolSchema,
+		Order:       rdPoolOrder,
+		Description: change.ResourceRecordSetUltraDNS.OwnerName,
+	}
+	return rdPoolObject, nil
 }
