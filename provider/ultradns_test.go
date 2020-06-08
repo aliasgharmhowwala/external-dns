@@ -477,34 +477,81 @@ func TestNewUltraDNSProvider_FailCases(t *testing.T) {
 	if err == nil {
 		t.Errorf("Proble value other than given values not working")
 	}
-       	_ = os.Setenv("ULTRADNS_USERNAME", "")
-       	_ = os.Setenv("ULTRADNS_BASEURL", "")
-        _ = os.Unsetenv("ULTRADNS_PASSWORD")
-       	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-       	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-        if err == nil {
-                t.Errorf("Expected to give error if password is not set")
 
-       }
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Unsetenv("ULTRADNS_PASSWORD")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Expected to give error if password is not set")
 
-       	_ = os.Setenv("ULTRADNS_USERNAME", "")
-       	_ = os.Setenv("ULTRADNS_PASSWORD", "")
-        _ = os.Unsetenv("ULTRADNS_BASEURL")
-        _ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-        _, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-        if err == nil {
-                t.Errorf("Expected to give error if baseurl is not set")
+	}
 
-       }
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Unsetenv("ULTRADNS_BASEURL")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Expected to give error if baseurl is not set")
 
-        _ = os.Setenv("ULTRADNS_USERNAME", "")
-        _ = os.Setenv("ULTRADNS_BASEURL", "")
-        _ = os.Setenv("ULTRADNS_PASSWORD", "")
-        _ = os.Unsetenv("ULTRADNS_ACCOUNTNAME")
-        _, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-        if err != nil {
-                t.Errorf("Not Expected to give error if AccountName is not set")
+	}
 
-       }
-	
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Unsetenv("ULTRADNS_ACCOUNTNAME")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err != nil {
+		t.Errorf("Not Expected to give error if AccountName is not set")
+
+	}
+
+}
+
+func TestNewUltraDNSProvider_NewEnvVariableSuccessCases(t *testing.T) {
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.Setenv("ULTRADNS_POOL_TYPE", "rdpool")
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Pool Type other than given type not working")
+	}
+
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.Setenv("ULTRADNS_PROBE_TOGGLE", "false")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Probe value other than given values not working ")
+	}
+
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "true")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Proble value other than given values not working")
+	}
+}
+
+func TestNewUltraDNSProvider_Base64DecodeFailcase(t *testing.T) {
+
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", 12345)
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "true")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Base64 decode should fail in this case")
+	}
+
 }
