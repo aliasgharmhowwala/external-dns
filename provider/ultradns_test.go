@@ -100,6 +100,7 @@ func (m *mockUltraDNSRecord) SelectWithOffsetWithLimit(k udnssdk.RRSetKey, offse
 	}}, udnssdk.ResultInfo{}, nil, nil
 }
 
+// NewUltraDNSProvider Test scenario
 func TestNewUltraDNSProvider(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
@@ -120,6 +121,7 @@ func TestNewUltraDNSProvider(t *testing.T) {
 	}
 }
 
+//zones function test scenario
 func TestUltraDNSProvider_Zones(t *testing.T) {
 	mocked := mockUltraDNSZone{}
 	provider := &UltraDNSProvider{
@@ -146,6 +148,7 @@ func TestUltraDNSProvider_Zones(t *testing.T) {
 	}
 }
 
+//Records function test case
 func TestUltraDNSProvider_Records(t *testing.T) {
 	mocked := mockUltraDNSRecord{}
 	mockedDomain := mockUltraDNSZone{}
@@ -171,6 +174,7 @@ func TestUltraDNSProvider_Records(t *testing.T) {
 
 }
 
+//ApplyChanges function testcase
 func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 	changes := &plan.Changes{}
 	mocked := mockUltraDNSRecord{nil}
@@ -199,6 +203,7 @@ func TestUltraDNSProvider_ApplyChanges(t *testing.T) {
 
 }
 
+// Testing function getSpecificRecord
 func TestUltraDNSProvider_getSpecificRecord(t *testing.T) {
 	mocked := mockUltraDNSRecord{nil}
 	mockedDomain := mockUltraDNSZone{nil}
@@ -326,6 +331,8 @@ func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T)
 	}
 }
 
+
+// Test case to check sbpool creation
 func TestUltraDNSProvider_newSBPoolObjectCreation(t *testing.T) {
 	mocked := mockUltraDNSRecord{nil}
 	mockedDomain := mockUltraDNSZone{nil}
@@ -396,6 +403,7 @@ func TestUltraDNSProvider_MultipleTargetAAAA(t *testing.T) {
 	}
 }
 
+// Test case to check multiple CNAME targets.
 func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
 	_, ok := os.LookupEnv("ULTRADNS_INTEGRATION")
 	if !ok {
@@ -415,6 +423,7 @@ func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
 	}
 }
 
+//Testing creation of RD Pool
 func TestUltraDNSProvider_newRDPoolObjectCreation(t *testing.T) {
 	mocked := mockUltraDNSRecord{nil}
 	mockedDomain := mockUltraDNSZone{nil}
@@ -447,6 +456,7 @@ func TestUltraDNSProvider_newRDPoolObjectCreation(t *testing.T) {
 
 }
 
+//Testing Failure scenarios over NewUltraDNS Provider
 func TestNewUltraDNSProvider_FailCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
@@ -475,7 +485,7 @@ func TestNewUltraDNSProvider_FailCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "adefg")
 	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
-		t.Errorf("Proble value other than given values not working")
+		t.Errorf("ActOnProbe value other than given values not working")
 	}
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
@@ -502,14 +512,18 @@ func TestNewUltraDNSProvider_FailCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
 	_ = os.Unsetenv("ULTRADNS_ACCOUNTNAME")
-	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-	if err != nil {
+	_ = os.Unsetenv("ULTRADNS_ACTONPROBE_TOGGLE")
+       	_ = os.Unsetenv("ULTRADNS_PROBE_TOGGLE")
+        _ = os.Unsetenv("ULTRADNS_POOL_TYPE")
+	_, accounterr := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if accounterr != nil {
 		t.Errorf("Not Expected to give error if AccountName is not set")
 
 	}
 
 }
 
+// Testing success scenarios for newly introduced environment variables
 func TestNewUltraDNSProvider_NewEnvVariableSuccessCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
@@ -517,8 +531,8 @@ func TestNewUltraDNSProvider_NewEnvVariableSuccessCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
 	_ = os.Setenv("ULTRADNS_POOL_TYPE", "rdpool")
 	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-	if err == nil {
-		t.Errorf("Pool Type other than given type not working")
+	if err != nil {
+		t.Errorf("Pool Type not working in proper scenario")
 	}
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
@@ -526,9 +540,9 @@ func TestNewUltraDNSProvider_NewEnvVariableSuccessCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
 	_ = os.Setenv("ULTRADNS_PROBE_TOGGLE", "false")
-	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-	if err == nil {
-		t.Errorf("Probe value other than given values not working ")
+	_, err1 := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err1 != nil {
+		t.Errorf("Probe given value is  not working ")
 	}
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
@@ -536,20 +550,21 @@ func TestNewUltraDNSProvider_NewEnvVariableSuccessCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
 	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "true")
-	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
-	if err == nil {
-		t.Errorf("Proble value other than given values not working")
+	_, err2 := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err2 != nil {
+		t.Errorf("ActOnProbe given value is not working")
 	}
 }
 
+// Base64 Bad string decoding scenario
 func TestNewUltraDNSProvider_Base64DecodeFailcase(t *testing.T) {
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
-	_ = os.Setenv("ULTRADNS_PASSWORD", 12345)
+	_ = os.Setenv("ULTRADNS_PASSWORD", "12345")
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
 	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "true")
-	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
 		t.Errorf("Base64 decode should fail in this case")
 	}
