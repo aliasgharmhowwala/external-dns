@@ -19,7 +19,7 @@ import (
 	"os"
 	"strings"
 	"time"
-
+	"strconv"
 	"encoding/base64"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
@@ -35,11 +35,14 @@ const (
 	ultradnsUpdate     = "UPDATE"
 	sbPoolPriority     = 1
 	sbPoolOrder        = "ROUND_ROBIN"
-	sbPoolRunProbes    = true
-	sbPoolActOnProbes  = true
-	ultradnsPoolType   = "rdpool"
 	rdPoolOrder        = "ROUND_ROBIN"
 )
+
+// global variables
+var sbPoolRunProbes = true
+var sbPoolActOnProbes  = true
+var ultradnsPoolType   = "rdpool"
+
 
 type UltraDNSProvider struct {
 	client udnssdk.Client
@@ -71,7 +74,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 	Password, err := base64.StdEncoding.DecodeString(Base64Password)
 	if err != nil {
 		fmt.Printf("Error decoding string: %s ", err.Error())
-		return err
+		return nil,err
 	}
 
 	BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
@@ -83,25 +86,25 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		AccountName = ""
 	}
 
-	probeValue, ok := os.LookUpEnv("ULTRADNS_PROBE_TOGGLE")
+	probeValue, ok := os.LookupEnv("ULTRADNS_PROBE_TOGGLE")
 	if ok {
-		if (probeValue != true) && (probeValue != false) {
+		if (probeValue != "true") && (probeValue != "false") {
 			return nil, fmt.Errorf("please set proper probe value, the values can be either true or false")
 		} else {
-			sbPoolRunProbes = probeValue
+			sbPoolRunProbes,_ = strconv.ParseBool(probeValue)
 		}
 	}
 
-	actOnProbeValue, ok := os.LookUpEnv("ULTRADNS_ACTONPROBE_TOGGLE")
+	actOnProbeValue, ok := os.LookupEnv("ULTRADNS_ACTONPROBE_TOGGLE")
 	if ok {
-		if (actOnProbeValue != true) && (actOnProbeValue != false) {
+		if (actOnProbeValue != "true") && (actOnProbeValue != "false") {
 			return nil, fmt.Errorf("please set proper act on probe value, the values can be either true or false")
 		} else {
-			sbPoolActOnProbes = actOnProbeValue
+			sbPoolActOnProbes,_ = strconv.ParseBool(actOnProbeValue)
 		}
 	}
 
-	poolValue, ok := os.LookUpEnv("ULTRADNS_POOL_TYPE")
+	poolValue, ok := os.LookupEnv("ULTRADNS_POOL_TYPE")
 	if ok {
 		if (poolValue != "sbpool") && (poolValue != "rdpool") {
 			return nil, fmt.Errorf(" please set proper ULTRADNS_POOL_TYPE, supported types are sbpool or rdpool")
@@ -109,7 +112,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		ultradnsPoolType = poolValue
 	}
 
-	client, err := udnssdk.NewClient(Username, Password, BaseURL)
+	client, err := udnssdk.NewClient(Username, string(Password), BaseURL)
 	if err != nil {
 
 		return nil, fmt.Errorf("Connection cannot be established")
@@ -491,9 +494,9 @@ func (p *UltraDNSProvider) newSBPoolObjectCreation(ctx context.Context, change *
 }
 
 //Creation of RDPoolObject
-func (p *UltraDNSProvider) newRDPoolCreation(ctx context.Context, change *UltraDNSChanges) (rdPool udnssdk.PoolProfile, err error) {
+func (p *UltraDNSProvider) newRDPoolObjectCreation(ctx context.Context, change *UltraDNSChanges) (rdPool udnssdk.RDPoolProfile, err error) {
 
-	rdPoolObject := udnssdk.SBPoolProfile{
+	rdPoolObject := udnssdk.RDPoolProfile{
 		Context:     udnssdk.RDPoolSchema,
 		Order:       rdPoolOrder,
 		Description: change.ResourceRecordSetUltraDNS.OwnerName,
