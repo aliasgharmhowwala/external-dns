@@ -452,30 +452,30 @@ func TestNewUltraDNSProvider_FailCases(t *testing.T) {
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-	poolType := os.setenv("ULTRADNS_POOL_TYPE", "xyz")
+	_ = os.Setenv("ULTRADNS_POOL_TYPE", "xyz")
 	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
-		t.Errorf("Pool Type other than given type not working : %v", os.LookupEnv("ULTRADNS_POOL_TYPE"))
+		t.Errorf("Pool Type other than given type not working")
 	}
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-	_ = os.setenv("ULTRADNS_PROBE_TOGGLE", "adefg")
-	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	_ = os.Setenv("ULTRADNS_PROBE_TOGGLE", "adefg")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
-		t.Errorf("Proble value other than given values not working : %v", os.LookupEnv("ULTRADNS_PROBE_TOGGLE"))
+		t.Errorf("Probe value other than given values not working ")
 	}
 
 	_ = os.Setenv("ULTRADNS_USERNAME", "")
 	_ = os.Setenv("ULTRADNS_PASSWORD", "")
 	_ = os.Setenv("ULTRADNS_BASEURL", "")
 	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
-	_ = os.setenv("ULTRADNS_ACTONPROBE_TOGGLE", "adefg")
-	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	_ = os.Setenv("ULTRADNS_ACTONPROBE_TOGGLE", "adefg")
+	_, err = NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
 	if err == nil {
-		t.Errorf("Proble value other than given values not working : %v", os.LookupEnv("ULTRADNS_ACTONPROBE_TOGGLE"))
+		t.Errorf("Proble value other than given values not working")
 	}
 
 }

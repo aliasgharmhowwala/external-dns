@@ -43,6 +43,10 @@ var sbPoolRunProbes = true
 var sbPoolActOnProbes  = true
 var ultradnsPoolType   = "rdpool"
 
+var customHeader = udnssdk.CustomHeader{
+	Key: "UltraClient",
+	Value: "kubeclient",
+}
 
 type UltraDNSProvider struct {
 	client udnssdk.Client
@@ -51,6 +55,7 @@ type UltraDNSProvider struct {
 	DryRun       bool
 	AccountName  string
 }
+
 
 type UltraDNSChanges struct {
 	Action string
@@ -61,6 +66,7 @@ type UltraDNSChanges struct {
 // NewUltraDNSProvider initializes a new UltraDNS DNS based provider
 func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*UltraDNSProvider, error) {
 	Username, ok := os.LookupEnv("ULTRADNS_USERNAME")
+	udnssdk.SetCustomHeader = customHeader
 	if !ok {
 		return nil, fmt.Errorf("no username found")
 	}
@@ -148,6 +154,7 @@ func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
 
 func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	var endpoints []*endpoint.Endpoint
+	
 	zones, err := p.Zones(ctx)
 	if err != nil {
 		return nil, err
