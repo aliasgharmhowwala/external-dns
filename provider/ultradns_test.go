@@ -340,14 +340,14 @@ func TestUltraDNSProvider_newSBPoolObjectCreation(t *testing.T) {
 	changes := &plan.Changes{}
 	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com.", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
 	changesList := &UltraDNSChanges{
-                        Action:"UPDATE" ,
-                        ResourceRecordSetUltraDNS: udnssdk.RRSet{
-                                RRType:    "A",
-                                OwnerName: "kubernetes-ultradns-provider-test.com.",
-                                RData:     []string{"1.1.2.2","192.168.0.24"},
-                                TTL:       100,
-                        },
-                }
+		Action: "UPDATE",
+		ResourceRecordSetUltraDNS: udnssdk.RRSet{
+			RRType:    "A",
+			OwnerName: "kubernetes-ultradns-provider-test.com.",
+			RData:     []string{"1.1.2.2", "192.168.0.24"},
+			TTL:       100,
+		},
+	}
 
 	for _, _ = range changesList.ResourceRecordSetUltraDNS.RData {
 
@@ -406,11 +406,76 @@ func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
 		changes := &plan.Changes{}
 
 		changes.Create = []*endpoint.Endpoint{
-			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"nginx.loadbalancer.com.","nginx1.loadbalancer.com."}, RecordType: "CNAME", RecordTTL: 100},
+			{DNSName: "ttl.kubernetes-ultradns-provider-test.com", Targets: endpoint.Targets{"nginx.loadbalancer.com.", "nginx1.loadbalancer.com."}, RecordType: "CNAME", RecordTTL: 100},
 		}
 		err = provider.ApplyChanges(context.Background(), changes)
 		if err == nil {
 			t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
 		}
 	}
+}
+
+func TestUltraDNSProvider_newRDPoolObjectCreation(t *testing.T) {
+	mocked := mockUltraDNSRecord{nil}
+	mockedDomain := mockUltraDNSZone{nil}
+
+	provider := &UltraDNSProvider{
+		client: udnssdk.Client{
+			RRSets: &mocked,
+			Zone:   &mockedDomain,
+		},
+	}
+	changes := &plan.Changes{}
+	changes.UpdateNew = []*endpoint.Endpoint{{DNSName: "kubernetes-ultradns-provider-test.com.", Targets: endpoint.Targets{"1.1.2.2", "192.168.0.24"}, RecordType: "A", RecordTTL: 100}}
+	changesList := &UltraDNSChanges{
+		Action: "UPDATE",
+		ResourceRecordSetUltraDNS: udnssdk.RRSet{
+			RRType:    "A",
+			OwnerName: "kubernetes-ultradns-provider-test.com.",
+			RData:     []string{"1.1.2.2", "192.168.0.24"},
+			TTL:       100,
+		},
+	}
+	rdPoolObject := udnssdk.RDPoolProfile{
+		Context:     udnssdk.RDPoolSchema,
+		Order:       "ROUND_ROBIN",
+		Description: "kubernetes-ultradns-provider-test.com.",
+	}
+
+	actualRDPoolObject, _ := provider.newRDPoolObjectCreation(context.Background(), changesList)
+	assert.Equal(t, rdPoolObject, actualRDPoolObject)
+
+}
+
+func TestNewUltraDNSProvider_FailCases(t *testing.T) {
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	poolType := os.setenv("ULTRADNS_POOL_TYPE", "xyz")
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Pool Type other than given type not working : %v", os.LookupEnv("ULTRADNS_POOL_TYPE"))
+	}
+
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.setenv("ULTRADNS_PROBE_TOGGLE", "adefg")
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Proble value other than given values not working : %v", os.LookupEnv("ULTRADNS_PROBE_TOGGLE"))
+	}
+
+	_ = os.Setenv("ULTRADNS_USERNAME", "")
+	_ = os.Setenv("ULTRADNS_PASSWORD", "")
+	_ = os.Setenv("ULTRADNS_BASEURL", "")
+	_ = os.Setenv("ULTRADNS_ACCOUNTNAME", "")
+	_ = os.setenv("ULTRADNS_ACTONPROBE_TOGGLE", "adefg")
+	_, err := NewUltraDNSProvider(endpoint.NewDomainFilter([]string{"test-ultradns-provider.com"}), true)
+	if err == nil {
+		t.Errorf("Proble value other than given values not working : %v", os.LookupEnv("ULTRADNS_ACTONPROBE_TOGGLE"))
+	}
+
 }
