@@ -2,7 +2,7 @@
 
 This tutorial describes how to setup ExternalDNS for usage within a Kubernetes cluster using UltraDNS DNS.
 
-Make sure to use **>=0.6** version of ExternalDNS for this tutorial.
+Make sure to use **>0.7.2** version of ExternalDNS for this tutorial.
 
 ## Managing DNS with UltraDNS
 
@@ -241,7 +241,7 @@ spec:
         - path: /apple
           backend:
             serviceName: apple-service
-            servicePort: 5680
+            servicePort: 5678
 ```
 - Next, create the deployment and service:
 ```console
@@ -302,7 +302,7 @@ $ kubectl delete -f external-dns.yaml
             - path: /apple
               backend:
                 serviceName: apple-service
-                servicePort: 5680
+                servicePort: 5678
     ```
     - Config file (Using Kuberentes cluster service from different cloud vendors)
     ```yaml
@@ -324,6 +324,8 @@ $ kubectl delete -f external-dns.yaml
     apiVersion: v1
     metadata:
       name: apple-service
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: my-app.example.com.
     spec:
       selector:
         app: apple
@@ -421,6 +423,7 @@ $ kubectl delete -f external-dns.yaml
         - port: 5680 # Default port for image
       apiVersion: extensions/v1beta1
     ---
+    apiVersion: extensions/v1beta1
     kind: Ingress
     metadata:
       name: example-ingress

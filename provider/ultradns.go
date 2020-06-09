@@ -15,12 +15,12 @@ package provider
 
 import (
 	"context"
+	"encoding/base64"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"time"
-	"strconv"
-	"encoding/base64"
 
 	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
 	log "github.com/sirupsen/logrus"
@@ -40,12 +40,13 @@ const (
 
 // global variables
 var sbPoolRunProbes = true
-var sbPoolActOnProbes  = true
-var ultradnsPoolType   = "rdpool"
+var sbPoolActOnProbes = true
+var ultradnsPoolType = "rdpool"
 
+//Setting custom headers for ultradns api calls
 var customHeader = udnssdk.CustomHeader{
-	Key: "UltraClient",
-	Value: "kubeclient",
+	Key:   "UltraClient",
+	Value: "kube-client",
 }
 
 type UltraDNSProvider struct {
@@ -55,7 +56,6 @@ type UltraDNSProvider struct {
 	DryRun       bool
 	AccountName  string
 }
-
 
 type UltraDNSChanges struct {
 	Action string
@@ -80,7 +80,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 	Password, err := base64.StdEncoding.DecodeString(Base64Password)
 	if err != nil {
 		fmt.Printf("Error decoding string: %s ", err.Error())
-		return nil,err
+		return nil, err
 	}
 
 	BaseURL, ok := os.LookupEnv("ULTRADNS_BASEURL")
@@ -97,7 +97,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		if (probeValue != "true") && (probeValue != "false") {
 			return nil, fmt.Errorf("please set proper probe value, the values can be either true or false")
 		} else {
-			sbPoolRunProbes,_ = strconv.ParseBool(probeValue)
+			sbPoolRunProbes, _ = strconv.ParseBool(probeValue)
 		}
 	}
 
@@ -106,7 +106,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		if (actOnProbeValue != "true") && (actOnProbeValue != "false") {
 			return nil, fmt.Errorf("please set proper act on probe value, the values can be either true or false")
 		} else {
-			sbPoolActOnProbes,_ = strconv.ParseBool(actOnProbeValue)
+			sbPoolActOnProbes, _ = strconv.ParseBool(actOnProbeValue)
 		}
 	}
 
@@ -154,7 +154,7 @@ func (p *UltraDNSProvider) Zones(ctx context.Context) ([]udnssdk.Zone, error) {
 
 func (p *UltraDNSProvider) Records(ctx context.Context) ([]*endpoint.Endpoint, error) {
 	var endpoints []*endpoint.Endpoint
-	
+
 	zones, err := p.Zones(ctx)
 	if err != nil {
 		return nil, err
