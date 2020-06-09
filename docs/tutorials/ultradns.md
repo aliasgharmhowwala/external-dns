@@ -260,79 +260,79 @@ $ kubectl delete -f external-dns.yaml
 ### Scenario to create CNAME records
 - Note: Before Deploying external-dns service make sure to add option `--txt-prefix=txt-` in external-dns.yaml,if not provided the resource records won't get created
 -  First of all create service file called 'apple-banana-echo.yaml'
-  - Config file (kubernetes cluster is on-premise not on cloud)
-  ```yaml
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app
-    labels:
-      app: apple
-  spec:
-    containers:
-      - name: apple-app
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service
-  spec:
-    selector:
-      app: apple
-    ports:
-      - port: 5678 # Default port for image
-  ---
-  apiVersion: extensions/v1beta1
-  kind: Ingress
-  metadata:
-    name: example-ingress
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: apple.example.com.
-      external-dns.alpha.kubernetes.io/target: apple.cname.com.
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service
-              servicePort: 5680
-  ```
-  - Config file (Using Kuberentes cluster service from different cloud vendors)
-  ```yaml
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app
-    labels:
-      app: apple
-  spec:
-    containers:
-      - name: apple-app
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service
-  spec:
-    selector:
-      app: apple
-    type: LoadBalancer
-    ports:
-      - protocol: TCP
-        port: 5678
-        targetPort: 5678
-  ```
+    - Config file (kubernetes cluster is on-premise not on cloud)
+    ```yaml
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app
+      labels:
+        app: apple
+    spec:
+      containers:
+        - name: apple-app
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service
+    spec:
+      selector:
+        app: apple
+      ports:
+        - port: 5678 # Default port for image
+    ---
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+      name: example-ingress
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: apple.example.com.
+        external-dns.alpha.kubernetes.io/target: apple.cname.com.
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service
+                servicePort: 5680
+    ```
+    - Config file (Using Kuberentes cluster service from different cloud vendors)
+    ```yaml
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app
+      labels:
+        app: apple
+    spec:
+      containers:
+        - name: apple-app
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service
+    spec:
+      selector:
+        app: apple
+      type: LoadBalancer
+      ports:
+        - protocol: TCP
+          port: 5678
+          targetPort: 5678
+    ```
 - Next, create the deployment and service:
 ```console
 $ kubectl create -f apple-banana-echo.yaml
@@ -348,250 +348,250 @@ $ kubectl delete -f external-dns.yaml
 ### Scenario to create different types of resource records
 - Note: Before Deploying external-dns service make sure to add option `--txt-prefix=txt-` in external-dns.yaml. Since, we are also creating CNAME record, if not provided the resource records won't get created.
 -  First of all create service file called 'apple-banana-echo.yaml'
-  - Config file (kubernetes cluster is on-premise not on cloud)
-  ```yaml
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app
-    labels:
-      app: apple
-  spec:
-    containers:
-      - name: apple-app
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service
-  spec:
-    selector:
-      app: apple
-    ports:
-      - port: 5678 # Default port for image
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app1
-    labels:
-      app: apple1
-  spec:
-    containers:
-      - name: apple-app1
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service1
-  spec:
-    selector:
-      app: apple1
-    ports:
-      - port: 5679 # Default port for image
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app2
-    labels:
-      app: apple2
-  spec:
-    containers:
-      - name: apple-app2
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service2
-  spec:
-    selector:
-      app: apple2
-    ports:
-      - port: 5680 # Default port for image
+    - Config file (kubernetes cluster is on-premise not on cloud)
+    ```yaml
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app
+      labels:
+        app: apple
+    spec:
+      containers:
+        - name: apple-app
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service
+    spec:
+      selector:
+        app: apple
+      ports:
+        - port: 5678 # Default port for image
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app1
+      labels:
+        app: apple1
+    spec:
+      containers:
+        - name: apple-app1
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service1
+    spec:
+      selector:
+        app: apple1
+      ports:
+        - port: 5679 # Default port for image
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app2
+      labels:
+        app: apple2
+    spec:
+      containers:
+        - name: apple-app2
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service2
+    spec:
+      selector:
+        app: apple2
+      ports:
+        - port: 5680 # Default port for image
+      apiVersion: extensions/v1beta1
+    ---
+    kind: Ingress
+    metadata:
+      name: example-ingress
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: apple.example.com.
+        external-dns.alpha.kubernetes.io/target: apple.cname.com.
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service
+                servicePort: 5678
+    ---
     apiVersion: extensions/v1beta1
-  ---
-  kind: Ingress
-  metadata:
-    name: example-ingress
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: apple.example.com.
-      external-dns.alpha.kubernetes.io/target: apple.cname.com.
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service
-              servicePort: 5678
-  ---
-  apiVersion: extensions/v1beta1
-  kind: Ingress
-  metadata:
-    name: example-ingress1
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: apple-banana.example.com.
-      external-dns.alpha.kubernetes.io/target: 10.10.10.3
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service1
-              servicePort: 5679
-  ---
-  apiVersion: extensions/v1beta1
-  kind: Ingress
-  metadata:
-    name: example-ingress2
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: banana.example.com.
-      external-dns.alpha.kubernetes.io/target: 10.10.10.3,10.10.10.20
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service2
-              servicePort: 5680
-  ```
-  - Config file (Using Kuberentes cluster service from different cloud vendors)
-  ```yaml
-  ---
-  apiVersion: apps/v1
-  kind: Deployment
-  metadata:
-    name: nginx
-  spec:
-    selector:
-      matchLabels:
-        app: nginx
-    template:
-      metadata:
-        labels:
+    kind: Ingress
+    metadata:
+      name: example-ingress1
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: apple-banana.example.com.
+        external-dns.alpha.kubernetes.io/target: 10.10.10.3
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service1
+                servicePort: 5679
+    ---
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+      name: example-ingress2
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: banana.example.com.
+        external-dns.alpha.kubernetes.io/target: 10.10.10.3,10.10.10.20
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service2
+                servicePort: 5680
+    ```
+    - Config file (Using Kuberentes cluster service from different cloud vendors)
+    ```yaml
+    ---
+    apiVersion: apps/v1
+    kind: Deployment
+    metadata:
+      name: nginx
+    spec:
+      selector:
+        matchLabels:
           app: nginx
-      spec:
-        containers:
-        - image: nginx
-          name: nginx
-          ports:
-          - containerPort: 80
-  ---
-  apiVersion: v1
-  kind: Service
-  metadata:
-    name: nginx
-    annotations:
-      external-dns.alpha.kubernetes.io/hostname: my-app.example.com.
-  spec:
-    selector:
-      app: nginx
-    type: LoadBalancer
-    ports:
-      - protocol: TCP
-        port: 80
-        targetPort: 80
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app
-    labels:
-      app: apple
-  spec:
-    containers:
-      - name: apple-app
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service
-  spec:
-    selector:
-      app: apple
-    ports:
-      - port: 5678 # Default port for image
-  ---
-  kind: Pod
-  apiVersion: v1
-  metadata:
-    name: apple-app1
-    labels:
-      app: apple1
-  spec:
-    containers:
-      - name: apple-app1
-        image: hashicorp/http-echo
-        args:
-          - "-text=apple"
-  ---
-  kind: Service
-  apiVersion: v1
-  metadata:
-    name: apple-service1
-  spec:
-    selector:
-      app: apple1
-    ports:
-      - port: 5679 # Default port for image
-  ---
-  kind: Ingress
-  metadata:
-    name: example-ingress
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: apple.example.com.
-      external-dns.alpha.kubernetes.io/target: 10.10.10.3,10.10.10.25
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service
-              servicePort: 5678
-  ---
-  apiVersion: extensions/v1beta1
-  kind: Ingress
-  metadata:
-    name: example-ingress1
-    annotations:
-      ingress.kubernetes.io/rewrite-target: /
-      ingress.kubernetes.io/scheme: internet-facing
-      external-dns.alpha.kubernetes.io/hostname: apple-banana.example.com.
-      external-dns.alpha.kubernetes.io/target: 10.10.10.3
-  spec:
-    rules:
-    - http:
-        paths:
-          - path: /apple
-            backend:
-              serviceName: apple-service1
-              servicePort: 5679
-  ```
+      template:
+        metadata:
+          labels:
+            app: nginx
+        spec:
+          containers:
+          - image: nginx
+            name: nginx
+            ports:
+            - containerPort: 80
+    ---
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: nginx
+      annotations:
+        external-dns.alpha.kubernetes.io/hostname: my-app.example.com.
+    spec:
+      selector:
+        app: nginx
+      type: LoadBalancer
+      ports:
+        - protocol: TCP
+          port: 80
+          targetPort: 80
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app
+      labels:
+        app: apple
+    spec:
+      containers:
+        - name: apple-app
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service
+    spec:
+      selector:
+        app: apple
+      ports:
+        - port: 5678 # Default port for image
+    ---
+    kind: Pod
+    apiVersion: v1
+    metadata:
+      name: apple-app1
+      labels:
+        app: apple1
+    spec:
+      containers:
+        - name: apple-app1
+          image: hashicorp/http-echo
+          args:
+            - "-text=apple"
+    ---
+    kind: Service
+    apiVersion: v1
+    metadata:
+      name: apple-service1
+    spec:
+      selector:
+        app: apple1
+      ports:
+        - port: 5679 # Default port for image
+    ---
+    kind: Ingress
+    metadata:
+      name: example-ingress
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: apple.example.com.
+        external-dns.alpha.kubernetes.io/target: 10.10.10.3,10.10.10.25
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service
+                servicePort: 5678
+    ---
+    apiVersion: extensions/v1beta1
+    kind: Ingress
+    metadata:
+      name: example-ingress1
+      annotations:
+        ingress.kubernetes.io/rewrite-target: /
+        ingress.kubernetes.io/scheme: internet-facing
+        external-dns.alpha.kubernetes.io/hostname: apple-banana.example.com.
+        external-dns.alpha.kubernetes.io/target: 10.10.10.3
+    spec:
+      rules:
+      - http:
+          paths:
+            - path: /apple
+              backend:
+                serviceName: apple-service1
+                servicePort: 5679
+    ```
 - Next, create the deployment and service:
 ```console
 $ kubectl create -f apple-banana-echo.yaml
