@@ -279,7 +279,7 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			Type: "A",
 		}
 
-		rrsets, _ := provider.Select(rrsetKey)
+		rrsets, _ := provider.client.RRSets.Select(rrsetKey)
 		assert.Equal(t, rrsets[0].RData[0], "1.1.1.1")
 
 		rrsetKey = udnssdk.RRSetKey{
@@ -288,8 +288,8 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			Type: "AAAA",
 		}
 
-		rrsets, _ = provider.Select(rrsetKey)
-		assert.Equal(t, rrsets[0].RData[0], "2001:0db8:85a3:0000:0000:8a2e:0370:7334")
+		rrsets, _ = provider.client.RRSets.Select(rrsetKey)
+		assert.Equal(t, rrsets[0].RData[0], "2001:db8:85a3:0:0:8a2e:370:7334")
 
 		changes = &plan.Changes{}
 		changes.UpdateNew = []*endpoint.Endpoint{
@@ -306,7 +306,7 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			Type: "A",
 		}
 
-		rrsets, _ = provider.Select(rrsetKey)
+		rrsets, _ = provider.client.RRSets.Select(rrsetKey)
 		assert.Equal(t, rrsets[0].RData[0], "1.1.2.2")
 
 		rrsetKey = udnssdk.RRSetKey{
@@ -315,8 +315,8 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			Type: "AAAA",
 		}
 
-		rrsets, _ = provider.Select(rrsetKey)
-		assert.Equal(t, rrsets[0].RData[0], "2001:0db8:85a3:0000:0000:8a2e:0370:7335")
+		rrsets, _ = provider.client.RRSets.Select(rrsetKey)
+		assert.Equal(t, rrsets[0].RData[0], "2001:db8:85a3:0:0:8a2e:370:7335")
 
 		changes = &plan.Changes{}
 		changes.Delete = []*endpoint.Endpoint{
@@ -328,10 +328,10 @@ func TestUltraDNSProvider_ApplyChanges_Integration(t *testing.T) {
 			t.Errorf("should not fail, %s", err)
 		}
 
-		resp, _ := provider.Client.get("https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/AAAA/ttl.kubernetes-ultradns-provider-test.com.", udnssdk.RRSetListDTO{})
+		resp, _ := provider.client.Do("GET", "https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/AAAA/ttl.kubernetes-ultradns-provider-test.com.", nil, udnssdk.RRSetListDTO{})
 		assert.Equal(t, resp.Status, "404 Not Found")
 
-		resp, _ = provider.Client.get("https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/A/kubernetes-ultradns-provider-test.com.", udnssdk.RRSetListDTO{})
+		resp, _ = provider.client.Do("GET", "https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/A/kubernetes-ultradns-provider-test.com.", nil, udnssdk.RRSetListDTO{})
 		assert.Equal(t, resp.Status, "404 Not Found")
 
 	}
@@ -362,7 +362,7 @@ func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T)
 			Type: "A",
 		}
 
-		rrsets, _ := provider.Select(rrsetKey)
+		rrsets, _ := provider.client.RRSets.Select(rrsetKey)
 		assert.Equal(t, rrsets[0].RData, []string{"1.1.1.1", "1.1.2.2"})
 
 		changes = &plan.Changes{}
@@ -379,7 +379,7 @@ func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T)
 			Type: "A",
 		}
 
-		rrsets, _ = provider.Select(rrsetKey)
+		rrsets, _ = provider.client.RRSets.Select(rrsetKey)
 		assert.Equal(t, rrsets[0].RData, []string{"1.1.2.2", "192.168.0.24", "1.2.3.4"})
 
 		changes = &plan.Changes{}
@@ -396,7 +396,7 @@ func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T)
 			Type: "A",
 		}
 
-		rrsets, _ = provider.Select(rrsetKey)
+		rrsets, _ = provider.client.RRSets.Select(rrsetKey)
 		assert.Equal(t, rrsets[0].RData, []string{"1.1.2.2"})
 
 		changes = &plan.Changes{}
@@ -407,7 +407,7 @@ func TestUltraDNSProvider_ApplyChanges_MultipleTarget_integeration(t *testing.T)
 			t.Errorf("should not fail, %s", err)
 		}
 
-		resp, _ := provider.Client.get("https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/A/kubernetes-ultradns-provider-test.com.", udnssdk.RRSetListDTO{})
+		resp, _ := provider.client.Do("GET", "https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/A/kubernetes-ultradns-provider-test.com.", nil, udnssdk.RRSetListDTO{})
 		assert.Equal(t, resp.Status, "404 Not Found")
 
 	}
@@ -481,7 +481,7 @@ func TestUltraDNSProvider_MultipleTargetAAAA(t *testing.T) {
 		if err == nil {
 			t.Errorf("We wanted it to fail since multiple AAAA targets are not allowed")
 		}
-		resp, _ := provider.Client.get("https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/AAAA/ttl.kubernetes-ultradns-provider-test.com.", udnssdk.RRSetListDTO{})
+		resp, _ := provider.client.Do("GET", "https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/AAAA/ttl.kubernetes-ultradns-provider-test.com.", nil, udnssdk.RRSetListDTO{})
 		assert.Equal(t, resp.Status, "404 Not Found")
 	}
 }
@@ -504,7 +504,7 @@ func TestUltraDNSProvider_MultipleTargetCNAME(t *testing.T) {
 			t.Errorf("We wanted it to fail since multiple CNAME targets are not allowed")
 		}
 
-		resp, _ := provider.Client.get("https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/CNAME/kubernetes-ultradns-provider-test.com.", udnssdk.RRSetListDTO{})
+		resp, _ := provider.client.Do("GET", "https://api.ultradns.com/zones/kubernetes-ultradns-provider-test.com./rrsets/CNAME/kubernetes-ultradns-provider-test.com.", nil, udnssdk.RRSetListDTO{})
 		assert.Equal(t, resp.Status, "404 Not Found")
 	}
 }
