@@ -194,7 +194,7 @@ Please verify on the [UltraDNS UI](https://portal.ultradns.neustar) that the rec
 
 Select the zone that was created above (or select the appropriate zone if a different zone was used.)
 
-This should show the external IP will be displayed as an CNAME record for your zone.
+The external IP address will be displayed as an CNAME record for your zone.
 
 ## Cleaning up the deployment and service
 
