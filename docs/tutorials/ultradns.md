@@ -49,6 +49,7 @@ spec:
         - --source=service # ingress is also possible
         - --domain-filter=example.com # (Recommended) We recommend to use this filter as it minimize the time to propagate changes, as there are less number of zones to look into..
         - --provider=ultradns
+        - --txt-prefix=txt-
         env:
         - name: ULTRADNS_USERNAME
           value: ""
@@ -120,6 +121,7 @@ spec:
         - --source=ingress
         - --domain-filter=example.com #(Recommended) We recommend to use this filter as it minimize the time to propagate changes, as there are less number of zones to look into..
         - --provider=ultradns
+        - --txt-prefix=txt-
         env:
         - name: ULTRADNS_USERNAME
           value: ""
