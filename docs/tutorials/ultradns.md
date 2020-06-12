@@ -2,7 +2,7 @@
 
 This tutorial describes how to setup ExternalDNS for usage within a Kubernetes cluster using UltraDNS.
 
-For this tutorial, please make sure that you are using version  **>0.7.2** (or higher) of ExternalDNS.
+For this tutorial, please make sure that you are using version  **> 0.7.2** of ExternalDNS.
 
 ## Managing DNS with UltraDNS
 
@@ -175,7 +175,7 @@ Please note the annotation on the service. Use the same hostname as the UltraDNS
 
 ExternalDNS uses this annotation to determine what services should be registered with DNS. Removing the annotation will cause ExternalDNS to remove the corresponding DNS records.
 
-####  Creating the deployment and service:
+## Creating the deployment and service:
 
 ```console
 $ kubectl create -f nginx.yaml
@@ -194,7 +194,7 @@ Select the zone that was created above (or select the appropriate zone if a diff
 
 This should show the external IP will be displayed as an CNAME record for your zone.
 
-## Cleanup
+## Cleaning up the deployment and service
 
 Now that we have verified that ExternalDNS will automatically manage UltraDNS records, we can delete example zones that you created in this tutorial:
 
