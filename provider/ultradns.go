@@ -44,7 +44,7 @@ var sbPoolActOnProbes = true
 var ultradnsPoolType = "rdpool"
 
 //Setting custom headers for ultradns api calls
-var customHeader = udnssdk.CustomHeader{
+var customHeader = []udnssdk.CustomHeader{
 	Key:   "UltraClient",
 	Value: "kube-client",
 }
@@ -324,8 +324,8 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				Name: change.ResourceRecordSetUltraDNS.OwnerName,
 			}
 			record := udnssdk.RRSet{}
-			if change.ResourceRecordSetUltraDNS.RRType == "A" && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
-				if ultradnsPoolType == "sbpool" {
+			if ((change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" ) && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
+				if ultradnsPoolType == "sbpool" && change.ResourceRecordSetUltraDNS.RRType == "A" {
 					sbPoolObject, _ := p.newSBPoolObjectCreation(ctx, change)
 					record = udnssdk.RRSet{
 						RRType:    change.ResourceRecordSetUltraDNS.RRType,
@@ -343,13 +343,9 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 						TTL:       change.ResourceRecordSetUltraDNS.TTL,
 						Profile:   rdPoolObject.RawProfile(),
 					}
-				}
-
-			} else if change.ResourceRecordSetUltraDNS.RRType == "AAAA" && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
-
-				return fmt.Errorf("We do not support Multiple target AAAA records in SB Pool please contact to Neustar for further details")
-
-			} else {
+				}else{
+					return fmt.Errorf("We do not support Multiple target AAAA records in SB Pool please contact to Neustar for further details")
+				}else {
 				record = udnssdk.RRSet{
 					RRType:    change.ResourceRecordSetUltraDNS.RRType,
 					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
