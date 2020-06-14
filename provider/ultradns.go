@@ -44,9 +44,11 @@ var sbPoolActOnProbes = true
 var ultradnsPoolType = "rdpool"
 
 //Setting custom headers for ultradns api calls
-var customHeader = udnssdk.CustomHeader{
-	Key:   "UltraClient",
-	Value: "kube-client",
+var customHeader = []udnssdk.CustomHeader{
+	udnssdk.CustomHeader {
+		Key:   "UltraClient",
+		Value: "kube-client",
+	},
 }
 
 type UltraDNSProvider struct {
