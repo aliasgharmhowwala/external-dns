@@ -207,8 +207,7 @@ Now that we have verified that ExternalDNS will automatically manage your UltraD
 $ kubectl delete service -f nginx.yaml
 $ kubectl delete service -f externaldns.yaml
 ```
-## Managing your Records
-### Creating Multiple A Records Target
+## Creating Multiple A Records Target
 - First, you want to create a service file called 'apple-banana-echo.yaml' 
 ```yaml
 ---
@@ -316,7 +315,7 @@ $ kubectl delete -f external-dns.yaml
                 serviceName: apple-service
                 servicePort: 5678
     ```
-    - _Config File Example – Kuberentes cluster service from different cloud vendors_
+    - _Config File Example – Kubernetes cluster service from different cloud vendors_
     ```yaml
     ---
     kind: Pod
@@ -489,7 +488,7 @@ $ kubectl delete -f external-dns.yaml
                 serviceName: apple-service2
                 servicePort: 5680
     ```
-    - _Config File Example – Kuberentes cluster service from different cloud vendors_
+    - _Config File Example – Kubernetes cluster service from different cloud vendors_
     ```yaml
     ---
     apiVersion: apps/v1
