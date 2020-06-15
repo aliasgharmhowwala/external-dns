@@ -2,7 +2,7 @@
 
 This tutorial describes how to setup ExternalDNS for usage within a Kubernetes cluster using UltraDNS.
 
-For this tutorial, please make sure that you are using version  **> 0.7.2** of ExternalDNS.
+For this tutorial, please make sure that you are using a version **> 0.7.2** of ExternalDNS.
 
 ## Managing DNS with UltraDNS
 
@@ -20,10 +20,10 @@ The following environment variables will be needed to run ExternalDNS with Ultra
 ## Deploying ExternalDNS
 
 Connect your `kubectl` client to the cluster you want to test ExternalDNS with.
-Then apply one of the following manifests file to deploy ExternalDNS.
+Then, apply one of the following manifests file to deploy ExternalDNS.
 
-- Note: We are assuming the zone is already present at UltraDNS.
-- Note: While creating CNAMES as target endpoints the `--txt-prefix` option is mandatory.
+- Note: We are assuming the zone is already present within UltraDNS.
+- Note: While creating CNAMES as target endpoints, the `--txt-prefix` option is mandatory.
 ### Manifest (for clusters without RBAC enabled)
 
 ```yaml
@@ -46,7 +46,8 @@ spec:
       - name: external-dns
         image: registry.opensource.zalan.do/teapot/external-dns:latest
         args:
-        - --source=service # ingress is also possible
+        - --source=service 
+        - --source=ingress # ingress is also possible
         - --domain-filter=example.com # (Recommended) We recommend to use this filter as it minimize the time to propagate changes, as there are less number of zones to look into..
         - --provider=ultradns
         - --txt-prefix=txt-
@@ -177,36 +178,38 @@ Please note the annotation on the service. Use the same hostname as the UltraDNS
 
 ExternalDNS uses this annotation to determine what services should be registered with DNS. Removing the annotation will cause ExternalDNS to remove the corresponding DNS records.
 
-## Creating the deployment and service:
+## Creating the Deployment and Service:
 
 ```console
 $ kubectl create -f nginx.yaml
 $ kubectl create -f external-dns.yaml
 ```
 
-Depending on where you run your service, it can take a few minutes while for your cloud provider to create an external IP for the service.
+Depending on where you run your service from, it can take a few minutes for your cloud provider to create an external IP for the service.
 
 Once the service has an external IP assigned, ExternalDNS will notice the new service IP address and will synchronize the UltraDNS records.
 
-## Verifying UltraDNS records
+## Verifying UltraDNS Records
 
 Please verify on the [UltraDNS UI](https://portal.ultradns.neustar) that the records are created under the zone "example.com".
 
+For more information on UltraDNS UI, refer to (https://docs.ultradns.neustar/mspuserguide.html).
+
 Select the zone that was created above (or select the appropriate zone if a different zone was used.)
 
-The external IP address will be displayed as an CNAME record for your zone.
+The external IP address will be displayed as a CNAME record for your zone.
 
-## Cleaning up the deployment and service
+## Cleaning Up the Deployment and Service
 
-Now that we have verified that ExternalDNS will automatically manage UltraDNS records, we can delete example zones that you created in this tutorial:
+Now that we have verified that ExternalDNS will automatically manage your UltraDNS records, you can delete example zones that you created in this tutorial:
 
 ```
 $ kubectl delete service -f nginx.yaml
 $ kubectl delete service -f externaldns.yaml
 ```
-
-## Creating Multiple A Records Target
-- First of all create service file called 'apple-banana-echo.yaml' 
+## Managing your Records
+### Creating Multiple A Records Target
+- First, you want to create a service file called 'apple-banana-echo.yaml' 
 ```yaml
 ---
 kind: Pod
@@ -232,7 +235,7 @@ spec:
   ports:
     - port: 5678 # Default port for image
 ```
-- Next, create service file called 'expose-apple-banana-app.yaml' to expose the services, for more information to deploy ingress controller please refer (https://kubernetes.github.io/ingress-nginx/deploy/)
+- Then, create service file called 'expose-apple-banana-app.yaml' to expose the services. For more information to deploy ingress controller, refer to (https://kubernetes.github.io/ingress-nginx/deploy/)
 ```yaml
 apiVersion: extensions/v1beta1
 kind: Ingress
@@ -252,24 +255,24 @@ spec:
             serviceName: apple-service
             servicePort: 5678
 ```
-- Next, create the deployment and service:
+- Then, create the deployment and service:
 ```console
 $ kubectl create -f apple-banana-echo.yaml
 $ kubectl create -f expose-apple-banana-app.yaml
 $ kubectl create -f external-dns.yaml
 ```
-- Depending where you run your service it can take a little while for your cloud provider to create an external IP for the service.
-- Please verify on the [UltraDNS UI](https://portal.ultradns.neustar), that the records are created under the zone "example.com".
-- Finally, cleanup the deployment and service, verify on the UI that those records got deleted from the zone "example.com":
+- Depending on where you run your service from, it can take a few minutes for your cloud provider to create an external IP for the service.
+- Please verify on the [UltraDNS UI](https://portal.ultradns.neustar) that the records have been created under the zone "example.com".
+- Finally, you will need to clean up the deployment and service. Please verify on the UI afterwards that the records have been deleted from the zone ‘example.com’:
 ```console
 $ kubectl delete -f apple-banana-echo.yaml
 $ kubectl delete -f expose-apple-banana-app.yaml
 $ kubectl delete -f external-dns.yaml
 ```
 ## Creating CNAME Record
-- Note: Before Deploying external-dns service make sure to add option `--txt-prefix=txt-` in external-dns.yaml, if not provided the records won't get created
--  First of all create service file called 'apple-banana-echo.yaml'
-    - Config file (kubernetes cluster is on-premise not on cloud)
+- Please note, that prior to deploying the external-dns service, you will need to add the option –txt-prefix=txt- into external-dns.yaml. If this not provided, your records will not be created.
+-  First, create a service file called 'apple-banana-echo.yaml'
+    - _Config File Example – kubernetes cluster is on-premise not on cloud_
     ```yaml
     ---
     kind: Pod
@@ -313,7 +316,7 @@ $ kubectl delete -f external-dns.yaml
                 serviceName: apple-service
                 servicePort: 5678
     ```
-    - Config file (Using Kuberentes cluster service from different cloud vendors)
+    - _Config File Example – Kuberentes cluster service from different cloud vendors_
     ```yaml
     ---
     kind: Pod
@@ -344,22 +347,22 @@ $ kubectl delete -f external-dns.yaml
           port: 5678
           targetPort: 5678
     ```
-- Next, create the deployment and service:
+- Then, create the deployment and service:
 ```console
 $ kubectl create -f apple-banana-echo.yaml
 $ kubectl create -f external-dns.yaml
 ```
-- Depending where you run your service it can take a little while for your cloud provider to create an external IP for the service.
-- Please verify on the [UltraDNS UI](https://portal.ultradns.neustar), that the records are created under the zone "example.com".
-- Finally, cleanup the deployment and service, verify on the UI that those records got deleted from the zone "example.com":
+- Depending on where you run your service from, it can take a few minutes for your cloud provider to create an external IP for the service.
+- Please verify on the [UltraDNS UI](https://portal.ultradns.neustar), that the records have been created under the zone "example.com".
+- Finally, you will need to clean up the deployment and service. Please verify on the UI afterwards that the records have been deleted from the zone "example.com":
 ```console
 $ kubectl delete -f apple-banana-echo.yaml
 $ kubectl delete -f external-dns.yaml
 ```
 ## Create Multiple Types Of Records
-- Note: Before Deploying external-dns service make sure to add option `--txt-prefix=txt-` in external-dns.yaml. Since, we are also creating CNAME record, if not provided the records won't get created.
--  First of all create service file called 'apple-banana-echo.yaml'
-    - Config file (kubernetes cluster is on-premise not on cloud)
+- Please note, that prior to deploying the external-dns service, you will need to add the option –txt-prefix=txt- into external-dns.yaml. Since you will also be created a CNAME record, If this not provided, your records will not be created.
+-  First, create a service file called 'apple-banana-echo.yaml'
+    - _Config File Example – kubernetes cluster is on-premise not on cloud_
     ```yaml
     ---
     kind: Pod
@@ -486,7 +489,7 @@ $ kubectl delete -f external-dns.yaml
                 serviceName: apple-service2
                 servicePort: 5680
     ```
-    - Config file (Using Kuberentes cluster service from different cloud vendors)
+    - _Config File Example – Kuberentes cluster service from different cloud vendors_
     ```yaml
     ---
     apiVersion: apps/v1
@@ -604,14 +607,14 @@ $ kubectl delete -f external-dns.yaml
                 serviceName: apple-service1
                 servicePort: 5679
     ```
-- Next, create the deployment and service:
+- Then, create the deployment and service:
 ```console
 $ kubectl create -f apple-banana-echo.yaml
 $ kubectl create -f external-dns.yaml
 ```
-- Depending where you run your service it can take a little while for your cloud provider to create an external IP for the service.
-- Please verify on the [UltraDNS UI](https://portal.ultradns.neustar), that the records are created under the zone "example.com".
-- Finally, cleanup the deployment and service, verify on the UI that those records got deleted from the zone "example.com":
-```console
+- Depending on where you run your service from, it can take a few minutes for your cloud provider to create an external IP for the service.
+-o	Please verify on the [UltraDNS UI](https://portal.ultradns.neustar), that the records have been created under the zone "example.com".
+- Finally, you will need to clean up the deployment and service. Please verify on the UI afterwards that the records have been deleted from the zone "example.com":
+```console 
 $ kubectl delete -f apple-banana-echo.yaml
 $ kubectl delete -f external-dns.yaml```
