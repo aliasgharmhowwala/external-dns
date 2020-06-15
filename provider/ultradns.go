@@ -22,7 +22,7 @@ import (
 	"strings"
 	"time"
 
-	udnssdk "github.com/aliasgharmhowwala/ultradns-sdk-go"
+	udnssdk "github.com/ultradns/ultradns-sdk-go"
 	log "github.com/sirupsen/logrus"
 	"sigs.k8s.io/external-dns/endpoint"
 	"sigs.k8s.io/external-dns/plan"
@@ -45,15 +45,10 @@ var ultradnsPoolType = "rdpool"
 
 //Setting custom headers for ultradns api calls
 var customHeader = []udnssdk.CustomHeader{
-<<<<<<< HEAD
-	Key:   "UltraClient",
-	Value: "kube-client",
-=======
 	udnssdk.CustomHeader {
 		Key:   "UltraClient",
 		Value: "kube-client",
 	},
->>>>>>> ece00317d3241e56bb0eca6a2ed47c5fcdafe19d
 }
 
 type UltraDNSProvider struct {
@@ -99,7 +94,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		AccountName = ""
 	}
 
-	probeValue, ok := os.LookupEnv("ULTRADNS_PROBE_TOGGLE")
+	probeValue, ok := os.LookupEnv("ULTRADNS_ENABLE_PROBING")
 	if ok {
 		if (probeValue != "true") && (probeValue != "false") {
 			return nil, fmt.Errorf("please set proper probe value, the values can be either true or false")
@@ -108,7 +103,7 @@ func NewUltraDNSProvider(domainFilter endpoint.DomainFilter, dryRun bool) (*Ultr
 		}
 	}
 
-	actOnProbeValue, ok := os.LookupEnv("ULTRADNS_ACTONPROBE_TOGGLE")
+	actOnProbeValue, ok := os.LookupEnv("ULTRADNS_ENABLE_ACTONPROBE")
 	if ok {
 		if (actOnProbeValue != "true") && (actOnProbeValue != "false") {
 			return nil, fmt.Errorf("please set proper act on probe value, the values can be either true or false")
@@ -331,7 +326,7 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 				Name: change.ResourceRecordSetUltraDNS.OwnerName,
 			}
 			record := udnssdk.RRSet{}
-			if ((change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" ) && (len(change.ResourceRecordSetUltraDNS.RData) >= 2) {
+			if ((change.ResourceRecordSetUltraDNS.RRType == "A" || change.ResourceRecordSetUltraDNS.RRType == "AAAA" ) && (len(change.ResourceRecordSetUltraDNS.RData) >= 2)) {
 				if ultradnsPoolType == "sbpool" && change.ResourceRecordSetUltraDNS.RRType == "A" {
 					sbPoolObject, _ := p.newSBPoolObjectCreation(ctx, change)
 					record = udnssdk.RRSet{
@@ -352,7 +347,8 @@ func (p *UltraDNSProvider) submitChanges(ctx context.Context, changes []*UltraDN
 					}
 				}else{
 					return fmt.Errorf("We do not support Multiple target AAAA records in SB Pool please contact to Neustar for further details")
-				}else {
+				}
+			}else {
 				record = udnssdk.RRSet{
 					RRType:    change.ResourceRecordSetUltraDNS.RRType,
 					OwnerName: change.ResourceRecordSetUltraDNS.OwnerName,
